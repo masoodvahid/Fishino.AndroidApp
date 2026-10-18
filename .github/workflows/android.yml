@@ -1,0 +1,51 @@
+name: Android
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+      # The APK needs the pinned public key: either in gradle.properties or
+      # in the repository variable FISHINO_DIRECTORY_PUBLIC_KEY.
+      - name: Build debug APK
+        id: apk
+        env:
+          KEY_FROM_VARIABLE: ${{ vars.FISHINO_DIRECTORY_PUBLIC_KEY }}
+        run: |
+          args=()
+          if [ -n "$KEY_FROM_VARIABLE" ]; then
+            args+=("-Pfishino.directoryPublicKey=$KEY_FROM_VARIABLE")
+          elif ! grep -Eq '^fishino\.directoryPublicKey=.+' gradle.properties; then
+            echo "::warning::fishino.directoryPublicKey is not set; skipping the APK build."
+            exit 0
+          fi
+          ./gradlew --no-daemon assembleDebug "${args[@]}"
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.apk.outputs.built == 'true'
+        with:
+          name: fishino-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 14

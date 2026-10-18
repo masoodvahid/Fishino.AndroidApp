@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">فیشی‌نو</string>
+
+    <string name="employer_code_title">کد کارفرما</string>
+    <string name="employer_code_description">کد ۶ رقمی را که واحد منابع انسانی شرکت به شما داده است وارد کنید. این کار فقط یک بار انجام می‌شود.</string>
+    <string name="employer_code_label">کد ۶ رقمی</string>
+    <string name="employer_code_submit">بررسی کد</string>
+    <string name="employer_code_invalid_format">کد باید ۶ رقم باشد.</string>
+
+    <string name="employer_confirm_title">کارفرمای شما</string>
+    <string name="employer_confirm_question">آیا کارفرمای شما این شرکت است؟</string>
+    <string name="employer_confirm_yes">بله، ادامه</string>
+    <string name="employer_confirm_no">خیر، کد دیگری وارد می‌کنم</string>
+
+    <string name="error_code_not_found">کد کارفرما معتبر نیست.</string>
+    <string name="error_employer_inactive">سرویس این کارفرما در حال حاضر فعال نیست. با واحد منابع انسانی تماس بگیرید.</string>
+    <string name="error_rate_limited">تعداد تلاش‌های نادرست زیاد بوده است. %1$d دقیقه دیگر دوباره امتحان کنید.</string>
+    <string name="error_network">اتصال به سرور برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.</string>
+    <string name="error_untrusted">پاسخ سرور قابل اعتماد نبود. اگر از VPN یا پروکسی استفاده می‌کنید آن را خاموش کنید و دوباره تلاش کنید.</string>
+    <string name="error_server">خطای سرور. کمی بعد دوباره تلاش کنید.</string>
+
+    <string name="home_connected_to">متصل به</string>
+    <string name="home_placeholder">ورود و امکانات اپ در مرحله بعد اضافه می‌شود.</string>
+    <string name="home_change_employer">تغییر کارفرما</string>
+    <string name="home_change_employer_confirm">اتصال به این کارفرما حذف شود؟ برای ادامه باید دوباره کد کارفرما را وارد کنید.</string>
+    <string name="action_confirm">تأیید</string>
+    <string name="action_cancel">انصراف</string>
+</resources>
