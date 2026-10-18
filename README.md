@@ -53,7 +53,7 @@
 ## ساختار
 
 ```text
-app/src/main/java/ir/fishino/app/
+app/src/main/java/rdsco/fishino/app/
 ├── FishinoApp.kt, AppContainer.kt   راه‌اندازی و وابستگی‌ها
 ├── MainActivity.kt                  انتخاب صفحه: ورود کد یا خانه
 ├── employer/                        کد کارفرما، تماس با سامانه مدیریت، بررسی امضا، ذخیره
@@ -63,6 +63,6 @@ app/src/main/java/ir/fishino/app/
     └── theme/                       رنگ‌ها، فونت، راست‌به‌چپ
 ```
 
-فونت وزیرمتن تحت مجوز OFL است (`FONT-LICENSE-Vazirmatn.txt`). آیکن فعلی موقت است.
+فونت وزیرمتن تحت مجوز OFL است (`FONT-LICENSE-Vazirmatn.txt`). آیکن فروشگاه (۵۱۲ پیکسل) در `app/src/main/ic_launcher-playstore.png` است.
 
 </div>

@@ -13,11 +13,11 @@ val productSlug = fishinoProperty("productSlug")
 val directoryPublicKey = fishinoProperty("directoryPublicKey")
 
 android {
-    namespace = "ir.fishino.app"
+    namespace = "rdsco.fishino.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ir.fishino.app"
+        applicationId = "rdsco.fishino.app"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
