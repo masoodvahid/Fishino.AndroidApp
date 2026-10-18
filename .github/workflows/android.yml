@@ -14,17 +14,26 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Compiler and test failures are also emitted as annotations, so they
+      # are visible on the run page without opening the log.
       - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: |
+          set -o pipefail
+          if ! ./gradlew --no-daemon testDebugUnitTest 2>&1 | tee gradle-test.log; then
+            grep -E -A3 '^\* What went wrong|^e: |FAILED$' gradle-test.log | grep -v '^--$' | head -10 | while IFS= read -r line; do
+              echo "::error::${line//$'\r'/}"
+            done
+            exit 1
+          fi
 
       # The APK needs the pinned public key: either in gradle.properties or
       # in the repository variable FISHINO_DIRECTORY_PUBLIC_KEY.
