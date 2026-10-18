@@ -71,7 +71,8 @@ val checkFishinoConfig by tasks.registering {
 }
 
 // Enforced for anything that produces an installable app; unit tests do not need it.
-tasks.matching { task -> listOf("assemble", "bundle", "install").any { task.name.startsWith(it) } && !task.name.contains("Test") }
+val packagingTask = Regex("^(assemble|bundle|install)(Debug|Release)?$")
+tasks.matching { packagingTask.matches(it.name) }
     .configureEach { dependsOn(checkFishinoConfig) }
 
 dependencies {
