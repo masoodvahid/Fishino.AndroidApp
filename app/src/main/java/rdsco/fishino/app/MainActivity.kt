@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -23,6 +24,8 @@ import rdsco.fishino.app.ui.home.HomeScreen
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
 import rdsco.fishino.app.ui.onboarding.EmployerCodeViewModel
 import rdsco.fishino.app.ui.theme.FishinoTheme
+import rdsco.fishino.app.ui.update.UpdateDialog
+import rdsco.fishino.app.ui.update.UpdateViewModel
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -45,6 +48,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             FishinoTheme {
                 val scope = rememberCoroutineScope()
+                val updates: UpdateViewModel = viewModel(
+                    factory = viewModelFactory {
+                        initializer {
+                            UpdateViewModel(
+                                releases = container.githubReleases,
+                                downloader = container.updateDownloader,
+                                installer = container.apkInstaller,
+                                store = container.updateStore,
+                                currentVersionName = BuildConfig.VERSION_NAME,
+                            )
+                        }
+                    },
+                )
+                LaunchedEffect(Unit) { updates.autoCheck() }
+
                 val employerFlow = remember { container.employerStore.employer.map<Employer?, EmployerState> { EmployerState.Ready(it) } }
                 val state by employerFlow.collectAsStateWithLifecycle(initialValue = EmployerState.Loading)
 
@@ -64,12 +82,16 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 HomeScreen(
                                     employer = employer,
+                                    appVersion = BuildConfig.VERSION_NAME,
+                                    onCheckUpdates = if (updates.enabled) updates::checkNow else null,
                                     onChangeEmployer = { scope.launch { container.employerStore.clear() } },
                                 )
                             }
                         }
                     }
                 }
+
+                UpdateDialog(updates, currentVersion = BuildConfig.VERSION_NAME)
             }
         }
     }

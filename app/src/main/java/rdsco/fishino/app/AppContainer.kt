@@ -5,6 +5,11 @@ import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
 import okhttp3.OkHttpClient
+import rdsco.fishino.app.update.ApkInstaller
+import rdsco.fishino.app.update.GitHubReleases
+import rdsco.fishino.app.update.UpdateDownloader
+import rdsco.fishino.app.update.UpdateStore
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
@@ -27,4 +32,19 @@ class AppContainer(context: Context) {
         productSlug = BuildConfig.PRODUCT_SLUG,
         verifier = DirectoryTokenVerifier(BuildConfig.DIRECTORY_PUBLIC_KEY),
     )
+
+    private val userAgent = "Fishino-Android/${BuildConfig.VERSION_NAME}"
+
+    val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, userAgent)
+
+    // An APK download may take minutes on a slow line: no overall time limit.
+    val updateDownloader = UpdateDownloader(
+        client = httpClient.newBuilder().readTimeout(60, TimeUnit.SECONDS).callTimeout(0, TimeUnit.SECONDS).build(),
+        directory = File(context.cacheDir, "updates"),
+        userAgent = userAgent,
+    )
+
+    val apkInstaller = ApkInstaller(context.applicationContext)
+
+    val updateStore = UpdateStore(context)
 }

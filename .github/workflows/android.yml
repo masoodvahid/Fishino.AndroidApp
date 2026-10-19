@@ -35,6 +35,12 @@ jobs:
             exit 1
           fi
 
+      # R8 and resource shrinking only run in release builds. Build an unsigned
+      # one (with a throwaway key, never uploaded) so a broken release build is
+      # caught on every push instead of when a release is published.
+      - name: Verify release build
+        run: ./gradlew --no-daemon assembleRelease "-Pfishino.directoryPublicKey=$(openssl rand -base64 32)"
+
       # The APK needs the pinned public key: either in gradle.properties or
       # in the repository variable FISHINO_DIRECTORY_PUBLIC_KEY.
       - name: Build debug APK

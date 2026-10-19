@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,7 +37,12 @@ import java.net.URI
  * bound to and lets the user switch employer.
  */
 @Composable
-fun HomeScreen(employer: Employer, onChangeEmployer: () -> Unit) {
+fun HomeScreen(
+    employer: Employer,
+    appVersion: String,
+    onCheckUpdates: (() -> Unit)?,
+    onChangeEmployer: () -> Unit,
+) {
     var confirmChange by rememberSaveable { mutableStateOf(false) }
 
     Box(
@@ -73,6 +79,17 @@ fun HomeScreen(employer: Employer, onChangeEmployer: () -> Unit) {
                 )
                 TextButton(onClick = { confirmChange = true }) {
                     Text(stringResource(R.string.home_change_employer))
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Text(
+                    stringResource(R.string.home_version, appVersion),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (onCheckUpdates != null) {
+                    TextButton(onClick = onCheckUpdates) {
+                        Text(stringResource(R.string.home_check_updates))
+                    }
                 }
             }
         }

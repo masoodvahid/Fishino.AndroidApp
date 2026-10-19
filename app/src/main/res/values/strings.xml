@@ -24,6 +24,32 @@
     <string name="home_placeholder">ورود و امکانات اپ در مرحله بعد اضافه می‌شود.</string>
     <string name="home_change_employer">تغییر کارفرما</string>
     <string name="home_change_employer_confirm">اتصال به این کارفرما حذف شود؟ برای ادامه باید دوباره کد کارفرما را وارد کنید.</string>
+    <string name="home_version">نسخه %1$s</string>
+    <string name="home_check_updates">بررسی به‌روزرسانی</string>
+
+    <string name="update_checking">در حال بررسی نسخه جدید…</string>
+    <string name="update_up_to_date">نسخه نصب‌شده (%1$s) آخرین نسخه است.</string>
+    <string name="update_available_title">نسخه جدید فیشی‌نو</string>
+    <string name="update_available_text">نسخه %1$s آماده نصب است. نسخه فعلی شما %2$s است.</string>
+    <string name="update_size">حجم دانلود: %1$s مگابایت</string>
+    <string name="update_download">دانلود و نصب</string>
+    <string name="update_later">بعداً</string>
+    <string name="update_downloading_title">در حال دانلود نسخه جدید</string>
+    <string name="update_progress">%1$d٪ از %2$s مگابایت</string>
+    <string name="update_ready_title">نسخه %1$s دانلود شد</string>
+    <string name="update_ready_text">برای تکمیل، «نصب» را بزنید و در صفحه نصب اندروید تأیید کنید. اطلاعات شما حفظ می‌شود.</string>
+    <string name="update_permission_text">اندروید برای نصب به‌روزرسانی اجازه می‌خواهد. در صفحه بعد «اجازه از این منبع» را برای فیشی‌نو روشن کنید، برگردید و «نصب» را بزنید.</string>
+    <string name="update_install">نصب</string>
+    <string name="update_allow_install">رفتن به تنظیمات</string>
+    <string name="update_failed_title">به‌روزرسانی انجام نشد</string>
+    <string name="update_retry">تلاش دوباره</string>
+    <string name="update_error_network">اتصال به GitHub برقرار نشد. اینترنت را بررسی کنید و کمی بعد دوباره تلاش کنید.</string>
+    <string name="update_error_no_apk">فایل نسخه جدید هنوز آماده نیست. چند دقیقه بعد دوباره بررسی کنید.</string>
+    <string name="update_error_corrupt">فایل دانلودشده ناقص یا خراب است. دوباره تلاش کنید.</string>
+    <string name="update_error_signature">فایل نسخه جدید با امضای رسمی فیشی‌نو منتشر نشده و نصب نمی‌شود. با پشتیبانی تماس بگیرید.</string>
+    <string name="update_error_not_newer">فایل منتشرشده از نسخه نصب‌شده جدیدتر نیست.</string>
+
+    <string name="action_ok">باشه</string>
     <string name="action_confirm">تأیید</string>
     <string name="action_cancel">انصراف</string>
 </resources>

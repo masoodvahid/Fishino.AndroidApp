@@ -11,6 +11,15 @@ fun fishinoProperty(name: String): String =
 val directoryUrl = fishinoProperty("directoryUrl")
 val productSlug = fishinoProperty("productSlug")
 val directoryPublicKey = fishinoProperty("directoryPublicKey")
+val updateRepo = fishinoProperty("updateRepo")
+
+// Release builds get both from the GitHub release tag (see release.yml).
+val appVersionName = fishinoProperty("versionName").ifEmpty { "0.1.0" }
+val appVersionCode = fishinoProperty("versionCode").toIntOrNull() ?: 1
+
+// The release key must never change: Android only installs an update that
+// is signed with the same key as the installed app. It comes from CI secrets.
+val releaseKeystore = System.getenv("FISHINO_KEYSTORE_FILE")?.takeIf { it.isNotBlank() }
 
 android {
     namespace = "rdsco.fishino.app"
@@ -20,16 +29,34 @@ android {
         applicationId = "rdsco.fishino.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         buildConfigField("String", "DIRECTORY_URL", "\"$directoryUrl\"")
         buildConfigField("String", "PRODUCT_SLUG", "\"$productSlug\"")
         buildConfigField("String", "DIRECTORY_PUBLIC_KEY", "\"$directoryPublicKey\"")
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("FISHINO_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("FISHINO_KEY_ALIAS")
+                keyPassword = System.getenv("FISHINO_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
+        // Debug builds are signed with each machine's own debug key, so they
+        // could never install an official release; the updater is off there.
+        debug {
+            buildConfigField("String", "UPDATE_REPO", "\"\"")
+        }
         release {
+            signingConfig = signingConfigs.findByName("release")
+            buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -92,4 +119,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
 }
