@@ -123,12 +123,18 @@ jobs:
             exit 1
           fi
 
-      # Prints who signed the APK. Uses the newest build-tools that actually
-      # contain apksigner; any failure is shown as an annotation on the run.
+      # Prints who signed the APK, for the record. Gradle already fails the
+      # build if signing fails, so a problem with this tool must not keep the
+      # APK off the release: errors show up as an annotation only. Newer
+      # build-tools need Java 21, which the runner also has.
       - name: Check signature
+        continue-on-error: true
         env:
           APK: ${{ steps.signing.outputs.apk }}
         run: |
+          if [ -n "$JAVA_HOME_21_X64" ]; then
+            export JAVA_HOME="$JAVA_HOME_21_X64" PATH="$JAVA_HOME_21_X64/bin:$PATH"
+          fi
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           apksigner=$(find "$sdk/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1)
           if [ -z "$apksigner" ]; then
