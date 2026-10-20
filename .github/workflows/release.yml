@@ -123,10 +123,24 @@ jobs:
             exit 1
           fi
 
+      # Prints who signed the APK. Uses the newest build-tools that actually
+      # contain apksigner; any failure is shown as an annotation on the run.
       - name: Check signature
+        env:
+          APK: ${{ steps.signing.outputs.apk }}
         run: |
-          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          "$apksigner" verify --print-certs "${{ steps.signing.outputs.apk }}" | grep -E 'Signer #1 certificate (DN|SHA-256)'
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          apksigner=$(find "$sdk/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1)
+          if [ -z "$apksigner" ]; then
+            echo "::warning::apksigner not found under $sdk/build-tools; skipping the signature check."
+            exit 0
+          fi
+          if ! output=$("$apksigner" verify --print-certs "$APK" 2>&1); then
+            echo "$output"
+            echo "::error::apksigner could not verify $APK: $(echo "$output" | head -3 | tr '\n' ' ')"
+            exit 1
+          fi
+          echo "$output" | grep -E '^Signer #1 certificate' || echo "$output"
 
       - name: Attach APK to the release
         env:
