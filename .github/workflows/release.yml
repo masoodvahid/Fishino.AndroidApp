@@ -5,7 +5,9 @@ name: Release APK
 #   - official signing secrets set  -> fishino-x.y.z.apk (rdsco.fishino.app),
 #     which installed apps find through the GitHub API and offer as an update;
 #   - secrets not set yet            -> fishino-test-x.y.z.apk, a test build
-#     (rdsco.fishino.app.test, public test key, no in-app updater).
+#     (rdsco.fishino.app.test, public test key); installed test builds find
+#     it the same way and update themselves.
+# Do not mark releases as pre-release: apps only look at the latest release.
 #
 # Release tags must look like v1.2.3 (minor and patch below 100).
 # versionCode = major*10000 + minor*100 + patch, so it always grows.

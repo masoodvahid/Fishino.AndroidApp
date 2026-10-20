@@ -57,13 +57,15 @@ android {
 
     buildTypes {
         // Debug builds are signed with each machine's own debug key, so they
-        // could never install an official release; the updater is off there.
+        // could never install a release; the updater is off there.
         debug {
             buildConfigField("String", "UPDATE_REPO", "\"\"")
+            buildConfigField("String", "UPDATE_ASSET_PATTERN", "\"\"")
         }
         release {
             signingConfig = signingConfigs.findByName("release")
             buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
+            buildConfigField("String", "UPDATE_ASSET_PATTERN", "\"^fishino-[0-9][0-9.]*[.]apk$\"")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -71,14 +73,15 @@ android {
         // Test build attached to GitHub releases until the official key is set
         // up: own package id, so it installs next to (and never replaces) the
         // real app, and a fixed key, so each test release installs over the
-        // previous one. No in-app updater.
+        // previous one. Updates itself from the fishino-test-*.apk assets.
         create("preview") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
             signingConfig = signingConfigs.getByName("preview")
             matchingFallbacks += listOf("debug")
-            buildConfigField("String", "UPDATE_REPO", "\"\"")
+            buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
+            buildConfigField("String", "UPDATE_ASSET_PATTERN", "\"^fishino-test-[0-9][0-9.]*[.]apk$\"")
         }
     }
 

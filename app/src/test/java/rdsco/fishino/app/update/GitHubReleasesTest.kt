@@ -12,7 +12,9 @@ import org.junit.Test
 class GitHubReleasesTest {
 
     private val repo = "masoodvahid/Fishino.AndroidApp"
-    private val releases = GitHubReleases(OkHttpClient(), repo, "test")
+    private val officialPattern = "^fishino-[0-9][0-9.]*[.]apk$"
+    private val testPattern = "^fishino-test-[0-9][0-9.]*[.]apk$"
+    private val releases = GitHubReleases(OkHttpClient(), repo, officialPattern, "test")
 
     private fun asset(
         name: String = "fishino-0.2.0.apk",
@@ -51,6 +53,15 @@ class GitHubReleasesTest {
     }
 
     @Test
+    fun `the test build only takes the test apk`() {
+        val testReleases = GitHubReleases(OkHttpClient(), repo, testPattern, "test")
+
+        assertEquals(ReleaseLookup.NoApk, testReleases.interpret(release(asset(name = "fishino-0.2.0.apk"))))
+        val found = testReleases.interpret(release(asset(name = "fishino-0.2.0.apk") + "," + asset(name = "fishino-test-0.2.0.apk")))
+        assertTrue((found as ReleaseLookup.Found).release.apkUrl.endsWith("/fishino-test-0.2.0.apk"))
+    }
+
+    @Test
     fun `missing digest is allowed`() {
         val result = releases.interpret(release(asset(digest = null)))
 
@@ -83,7 +94,7 @@ class GitHubReleasesTest {
             server.enqueue(MockResponse().setBody(release(asset())))
             server.enqueue(MockResponse().setResponseCode(404))
             server.enqueue(MockResponse().setResponseCode(403).setBody("""{"message":"API rate limit exceeded"}"""))
-            val client = GitHubReleases(OkHttpClient(), repo, "Fishino-Android/0.1.0", server.url("/").toString())
+            val client = GitHubReleases(OkHttpClient(), repo, officialPattern, "Fishino-Android/0.1.0", server.url("/").toString())
 
             assertTrue(client.latest() is ReleaseLookup.Found)
             assertEquals(ReleaseLookup.NoRelease, client.latest())
@@ -97,8 +108,9 @@ class GitHubReleasesTest {
 
     @Test
     fun `an invalid repository disables updates`() {
-        assertFalse(GitHubReleases(OkHttpClient(), "", "test").enabled)
-        assertFalse(GitHubReleases(OkHttpClient(), "not a repo", "test").enabled)
+        assertFalse(GitHubReleases(OkHttpClient(), "", officialPattern, "test").enabled)
+        assertFalse(GitHubReleases(OkHttpClient(), "not a repo", officialPattern, "test").enabled)
+        assertFalse(GitHubReleases(OkHttpClient(), repo, "", "test").enabled)
         assertTrue(releases.enabled)
     }
 }

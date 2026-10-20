@@ -35,7 +35,7 @@ class AppContainer(context: Context) {
 
     private val userAgent = "Fishino-Android/${BuildConfig.VERSION_NAME}"
 
-    val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, userAgent)
+    val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, BuildConfig.UPDATE_ASSET_PATTERN, userAgent)
 
     // An APK download may take minutes on a slow line: no overall time limit.
     val updateDownloader = UpdateDownloader(

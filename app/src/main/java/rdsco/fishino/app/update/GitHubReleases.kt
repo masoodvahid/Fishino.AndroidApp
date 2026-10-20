@@ -43,11 +43,15 @@ sealed interface ReleaseLookup {
 class GitHubReleases(
     private val client: OkHttpClient,
     private val repository: String,
+    /** File name of this build's APK among the release assets (test and official builds differ). */
+    assetPattern: String,
     private val userAgent: String,
     private val apiBaseUrl: String = "https://api.github.com/",
 ) {
 
-    val enabled: Boolean get() = REPOSITORY.matches(repository)
+    private val assetRegex: Regex? = assetPattern.takeIf { it.isNotBlank() }?.let { runCatching { Regex(it) }.getOrNull() }
+
+    val enabled: Boolean get() = REPOSITORY.matches(repository) && assetRegex != null
 
     suspend fun latest(): ReleaseLookup = withContext(Dispatchers.IO) {
         if (!enabled) return@withContext ReleaseLookup.Failed
@@ -81,13 +85,12 @@ class GitHubReleases(
         val version = AppVersion.parse(tag) ?: return ReleaseLookup.Failed
 
         val assets = runCatching { release["assets"]?.jsonArray?.map { it.jsonObject } }.getOrNull().orEmpty()
-        val apk = assets
-            .filter { it.string("name")?.endsWith(".apk", ignoreCase = true) == true &&
-                    // Test builds are a different app (rdsco.fishino.app.test).
-                    it.string("name")?.contains("-test", ignoreCase = true) != true && it.string("state").let { state -> state == null || state == "uploaded" } }
-            .sortedByDescending { it.string("name")?.startsWith("fishino", ignoreCase = true) == true }
-            .firstOrNull()
-            ?: return ReleaseLookup.NoApk
+        val pattern = assetRegex ?: return ReleaseLookup.Failed
+        val apk = assets.firstOrNull { asset ->
+            val name = asset.string("name").orEmpty()
+            val state = asset.string("state")
+            pattern.matches(name) && (state == null || state == "uploaded")
+        } ?: return ReleaseLookup.NoApk
 
         val url = apk.string("browser_download_url")?.takeIf(::isGitHubDownload) ?: return ReleaseLookup.NoApk
         val sha256 = apk.string("digest")

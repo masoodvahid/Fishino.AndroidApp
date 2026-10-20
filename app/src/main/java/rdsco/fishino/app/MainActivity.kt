@@ -56,7 +56,8 @@ class MainActivity : ComponentActivity() {
                                 downloader = container.updateDownloader,
                                 installer = container.apkInstaller,
                                 store = container.updateStore,
-                                currentVersionName = BuildConfig.VERSION_NAME,
+                                // "0.2.0-test" for test builds: compare the numbers only.
+                                currentVersionName = BuildConfig.VERSION_NAME.substringBefore('-'),
                             )
                         }
                     },
