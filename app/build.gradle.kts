@@ -38,6 +38,13 @@ android {
     }
 
     signingConfigs {
+        // Public test key (app/test-signing/README.md). Only for "preview".
+        create("preview") {
+            storeFile = file("test-signing/fishino-test.jks")
+            storePassword = "fishino-test"
+            keyAlias = "fishino-test"
+            keyPassword = "fishino-test"
+        }
         if (releaseKeystore != null) {
             create("release") {
                 storeFile = file(releaseKeystore)
@@ -60,6 +67,18 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        // Test build attached to GitHub releases until the official key is set
+        // up: own package id, so it installs next to (and never replaces) the
+        // real app, and a fixed key, so each test release installs over the
+        // previous one. No in-app updater.
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            signingConfig = signingConfigs.getByName("preview")
+            matchingFallbacks += listOf("debug")
+            buildConfigField("String", "UPDATE_REPO", "\"\"")
         }
     }
 
@@ -98,7 +117,7 @@ val checkFishinoConfig by tasks.registering {
 }
 
 // Enforced for anything that produces an installable app; unit tests do not need it.
-val packagingTask = Regex("^(assemble|bundle|install)(Debug|Release)?$")
+val packagingTask = Regex("^(assemble|bundle|install)(Debug|Release|Preview)?$")
 tasks.matching { packagingTask.matches(it.name) }
     .configureEach { dependsOn(checkFishinoConfig) }
 

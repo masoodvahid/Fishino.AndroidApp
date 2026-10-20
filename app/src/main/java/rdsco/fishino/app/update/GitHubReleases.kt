@@ -82,7 +82,9 @@ class GitHubReleases(
 
         val assets = runCatching { release["assets"]?.jsonArray?.map { it.jsonObject } }.getOrNull().orEmpty()
         val apk = assets
-            .filter { it.string("name")?.endsWith(".apk", ignoreCase = true) == true && it.string("state").let { state -> state == null || state == "uploaded" } }
+            .filter { it.string("name")?.endsWith(".apk", ignoreCase = true) == true &&
+                    // Test builds are a different app (rdsco.fishino.app.test).
+                    it.string("name")?.contains("-test", ignoreCase = true) != true && it.string("state").let { state -> state == null || state == "uploaded" } }
             .sortedByDescending { it.string("name")?.startsWith("fishino", ignoreCase = true) == true }
             .firstOrNull()
             ?: return ReleaseLookup.NoApk

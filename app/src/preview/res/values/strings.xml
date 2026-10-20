@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Test build: installs next to the official app, so it must look different. -->
+<resources>
+    <string name="app_name">فیشی‌نو (تست)</string>
+</resources>

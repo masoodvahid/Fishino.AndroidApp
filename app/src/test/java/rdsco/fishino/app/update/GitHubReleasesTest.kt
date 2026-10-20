@@ -45,6 +45,12 @@ class GitHubReleasesTest {
     }
 
     @Test
+    fun `test builds are never offered to the official app`() {
+        assertEquals(ReleaseLookup.NoApk, releases.interpret(release(asset(name = "fishino-test-0.2.0.apk"))))
+        assertTrue(releases.interpret(release(asset(name = "fishino-test-0.2.0.apk") + "," + asset())) is ReleaseLookup.Found)
+    }
+
+    @Test
     fun `missing digest is allowed`() {
         val result = releases.interpret(release(asset(digest = null)))
 

@@ -41,9 +41,9 @@ jobs:
       - name: Verify release build
         run: ./gradlew --no-daemon assembleRelease "-Pfishino.directoryPublicKey=$(openssl rand -base64 32)"
 
-      # The APK needs the pinned public key: either in gradle.properties or
-      # in the repository variable FISHINO_DIRECTORY_PUBLIC_KEY.
-      - name: Build debug APK
+      # Same test build that releases carry until the official key is set up:
+      # fixed public test key, so it installs over the previous one.
+      - name: Build test APK
         id: apk
         env:
           KEY_FROM_VARIABLE: ${{ vars.FISHINO_DIRECTORY_PUBLIC_KEY }}
@@ -55,12 +55,12 @@ jobs:
             echo "::warning::fishino.directoryPublicKey is not set; skipping the APK build."
             exit 0
           fi
-          ./gradlew --no-daemon assembleDebug "${args[@]}"
+          ./gradlew --no-daemon assemblePreview "${args[@]}"
           echo "built=true" >> "$GITHUB_OUTPUT"
 
       - uses: actions/upload-artifact@v4
         if: steps.apk.outputs.built == 'true'
         with:
-          name: fishino-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: fishino-test-apk
+          path: app/build/outputs/apk/preview/*.apk
           retention-days: 14

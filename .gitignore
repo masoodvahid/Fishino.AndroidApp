@@ -11,3 +11,5 @@
 *.keystore
 *.jks
 keystore.properties
+# Public test key for the "preview" build (rdsco.fishino.app.test) only.
+!app/test-signing/fishino-test.jks

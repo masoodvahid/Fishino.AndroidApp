@@ -1,16 +1,19 @@
 name: Release APK
 
-# Builds the signed APK for every published GitHub release and attaches it
-# to the release. Installed apps find it through the GitHub API (latest
-# release) and offer the update to the user.
+# Builds the APK for every published GitHub release and attaches it to the
+# release:
+#   - official signing secrets set  -> fishino-x.y.z.apk (rdsco.fishino.app),
+#     which installed apps find through the GitHub API and offer as an update;
+#   - secrets not set yet            -> fishino-test-x.y.z.apk, a test build
+#     (rdsco.fishino.app.test, public test key, no in-app updater).
 #
 # Release tags must look like v1.2.3 (minor and patch below 100).
 # versionCode = major*10000 + minor*100 + patch, so it always grows.
 #
-# Repository settings needed (Settings > Secrets and variables > Actions):
+# Official signing (Settings > Secrets and variables > Actions):
 #   secrets:   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 #              ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
-#   variables: FISHINO_DIRECTORY_PUBLIC_KEY (unless set in gradle.properties)
+#   variables: FISHINO_DIRECTORY_PUBLIC_KEY (optional, overrides gradle.properties)
 
 on:
   release:
@@ -63,45 +66,70 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Release keystore
+      # With the official signing secrets: the real, signed app (in-app
+      # updates work). Without them: a test build (rdsco.fishino.app.test,
+      # public test key) so every release still carries an installable APK.
+      - name: Signing
+        id: signing
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret ANDROID_KEYSTORE_BASE64 is missing. See README (نسخه رسمی و بروزرسانی)."
-            exit 1
+          version="${{ steps.version.outputs.name }}"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+              echo "::error::ANDROID_KEYSTORE_BASE64 is set but ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS or ANDROID_KEY_PASSWORD is missing."
+              exit 1
+            fi
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            {
+              echo "keystore=$RUNNER_TEMP/release.jks"
+              echo "variant=Release"
+              echo "apk=app/build/outputs/apk/release/app-release.apk"
+              echo "file=fishino-$version.apk"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Official signing secrets are not set: attaching a TEST build (fishino-test-$version.apk, package rdsco.fishino.app.test)."
+            {
+              echo "keystore="
+              echo "variant=Preview"
+              echo "apk=app/build/outputs/apk/preview/app-preview.apk"
+              echo "file=fishino-test-$version.apk"
+            } >> "$GITHUB_OUTPUT"
           fi
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - name: Test and build signed APK
+      - name: Test and build APK
         env:
-          FISHINO_KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          FISHINO_KEYSTORE_FILE: ${{ steps.signing.outputs.keystore }}
           FISHINO_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           FISHINO_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           FISHINO_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEY_FROM_VARIABLE: ${{ vars.FISHINO_DIRECTORY_PUBLIC_KEY }}
+          VARIANT: ${{ steps.signing.outputs.variant }}
+          APK: ${{ steps.signing.outputs.apk }}
         run: |
           args=("-Pfishino.versionName=${{ steps.version.outputs.name }}" "-Pfishino.versionCode=${{ steps.version.outputs.code }}")
           if [ -n "$KEY_FROM_VARIABLE" ]; then
             args+=("-Pfishino.directoryPublicKey=$KEY_FROM_VARIABLE")
           fi
-          ./gradlew --no-daemon testReleaseUnitTest assembleRelease "${args[@]}"
+          ./gradlew --no-daemon "test${VARIANT}UnitTest" "assemble${VARIANT}" "${args[@]}"
 
-          apk=app/build/outputs/apk/release/app-release.apk
-          if [ ! -f "$apk" ]; then
-            echo "::error::Signed APK was not produced; check the keystore secrets."
+          if [ ! -f "$APK" ]; then
+            echo "::error::$APK was not produced; check the signing secrets."
             exit 1
           fi
 
       - name: Check signature
         run: |
           apksigner=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
-          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -E 'Signer #1 certificate (DN|SHA-256)'
+          "$apksigner" verify --print-certs "${{ steps.signing.outputs.apk }}" | grep -E 'Signer #1 certificate (DN|SHA-256)'
 
       - name: Attach APK to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          file="fishino-${{ steps.version.outputs.name }}.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$file"
+          file="${{ steps.signing.outputs.file }}"
+          cp "${{ steps.signing.outputs.apk }}" "$file"
           gh release upload "$RELEASE_TAG" "$file" --clobber --repo "$GITHUB_REPOSITORY"
