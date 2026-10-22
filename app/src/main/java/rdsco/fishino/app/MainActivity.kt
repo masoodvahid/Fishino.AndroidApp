@@ -2,7 +2,6 @@ package rdsco.fishino.app
 
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,12 +14,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import rdsco.fishino.app.employer.Employer
 import rdsco.fishino.app.ui.home.HomeScreen
+import rdsco.fishino.app.ui.home.HomeViewModel
 import rdsco.fishino.app.ui.login.LoginScreen
 import rdsco.fishino.app.ui.login.LoginViewModel
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
@@ -36,7 +37,8 @@ private sealed interface EmployerState {
     data class Ready(val employer: Employer?) : EmployerState
 }
 
-class MainActivity : ComponentActivity() {
+/** A FragmentActivity: the biometric prompt is shown through a fragment. */
+class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,8 +96,10 @@ class MainActivity : ComponentActivity() {
                                             initializer {
                                                 LoginViewModel(
                                                     api = container.authApi(employer.apiBaseUrl),
+                                                    apiBaseUrl = employer.apiBaseUrl,
                                                     sessions = container.sessionManager,
                                                     prefs = container.loginPrefs,
+                                                    vault = container.credentialVault,
                                                 )
                                             }
                                         },
@@ -107,12 +111,29 @@ class MainActivity : ComponentActivity() {
                                         onChangeEmployer = {
                                             scope.launch {
                                                 container.loginPrefs.forgetAccount()
+                                                runCatching { container.credentialVault.clearAll() }
                                                 container.employerStore.clear()
                                             }
                                         },
                                     )
                                 } else {
+                                    val home: HomeViewModel = viewModel(
+                                        // Per employer and user: nothing of another account is shown.
+                                        key = "home:${employer.apiBaseUrl}:${signedIn.user.id}",
+                                        factory = viewModelFactory {
+                                            initializer {
+                                                HomeViewModel(
+                                                    api = container.panelApi(employer.apiBaseUrl),
+                                                    apiBaseUrl = employer.apiBaseUrl,
+                                                    sessions = container.sessionManager,
+                                                    vault = container.credentialVault,
+                                                    prefs = container.loginPrefs,
+                                                )
+                                            }
+                                        },
+                                    )
                                     HomeScreen(
+                                        viewModel = home,
                                         employer = employer,
                                         user = signedIn.user,
                                         appVersion = BuildConfig.VERSION_NAME,

@@ -44,8 +44,24 @@ class SessionManagerTest {
         now += SessionManager.BACKGROUND_GRACE_MS + 1
         manager.onAppForeground()
         assertNull(manager.session.value)
-        // Leaving the app is the user's own doing: no "you were signed out" notice.
-        assertNull(manager.lastEnd.value)
+        // Remembered so the login screen can offer the fingerprint right away.
+        assertEquals(SessionEnd.Timeout, manager.lastEnd.value?.first)
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `a refused token ends its own session only`() {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val manager = SessionManager(scope)
+        manager.signedIn(session, AuthApi(OkHttpClient(), "https://127.0.0.1:1/api/v1", "t"))
+
+        manager.onUnauthorized("1|old")
+        assertEquals(session, manager.session.value)
+
+        manager.onUnauthorized(session.token)
+        assertNull(manager.session.value)
+        assertEquals(SessionEnd.Revoked, manager.lastEnd.value?.first)
 
         scope.cancel()
     }

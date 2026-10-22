@@ -8,8 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** Why the user is looking at the login screen again. */
-enum class SessionEnd { SignedOut, Expired, Revoked }
+/**
+ * Why the user is looking at the login screen again. [Timeout]: the app was
+ * left for more than [SessionManager.BACKGROUND_GRACE_MS].
+ */
+enum class SessionEnd { SignedOut, Timeout, Expired, Revoked }
 
 /**
  * The signed-in user, in memory only — the user signs in every time the app
@@ -47,10 +50,20 @@ class SessionManager(
     }
 
     /** User's choice, or the employer was changed. Tells the server too (best effort). */
-    fun signOut() {
+    fun signOut() = signOut(SessionEnd.SignedOut)
+
+    /**
+     * A call with this token was refused (401): the server no longer accepts
+     * it. Ignored when the session has moved on to another token meanwhile.
+     */
+    fun onUnauthorized(token: String) {
+        if (_session.value?.token == token) end(SessionEnd.Revoked, null)
+    }
+
+    private fun signOut(reason: SessionEnd) {
         val current = _session.value
         val currentApi = api
-        end(SessionEnd.SignedOut, null)
+        end(reason, null)
 
         if (current != null && currentApi != null) {
             scope.launch { currentApi.logout(current.token) }
@@ -66,7 +79,7 @@ class SessionManager(
         backgroundedAt = null
 
         if (_session.value != null && shouldSignOut(since, clock())) {
-            signOut()
+            signOut(SessionEnd.Timeout)
         }
     }
 

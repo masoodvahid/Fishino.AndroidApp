@@ -5,7 +5,7 @@
     <!-- In-app update: hands the downloaded release APK to the package installer. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- allowBackup off: later phases store session tokens here. -->
+    <!-- allowBackup off: the encrypted fingerprint-login data must never leave the phone. -->
     <application
         android:name=".FishinoApp"
         android:allowBackup="false"

@@ -27,7 +27,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -81,6 +83,7 @@ fun LoginScreen(
     val now by rememberTicker(active = state.lockedUntilMillis > 0 || state.resendAtMillis > 0)
 
     SmsCodeListener(request = state.smsListenRequest, onMessage = viewModel::onSmsReceived)
+    BiometricPromptEffect(request = state.biometricRequest, username = state.savedUsername, viewModel = viewModel)
 
     Box(
         modifier = Modifier
@@ -144,6 +147,21 @@ fun LoginScreen(
         }
     }
 
+    if (state.enrollmentOffer) {
+        AlertDialog(
+            // A choice is needed: the login finishes after the answer.
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.biometric_offer_title)) },
+            text = { Text(stringResource(R.string.biometric_offer_text)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::acceptEnrollment) { Text(stringResource(R.string.biometric_offer_accept)) }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::declineEnrollment) { Text(stringResource(R.string.biometric_offer_decline)) }
+            },
+        )
+    }
+
     if (confirmChangeEmployer) {
         AlertDialog(
             onDismissRequest = { confirmChangeEmployer = false },
@@ -165,6 +183,18 @@ fun LoginScreen(
 private fun LoginForm(state: LoginUiState, now: Long, viewModel: LoginViewModel) {
     val config = state.config ?: return
     val lockedSeconds = ((state.lockedUntilMillis - now + 999) / 1000).coerceAtLeast(0)
+
+    if (state.canUseBiometric && config.passwordEnabled) {
+        OutlinedButton(
+            onClick = viewModel::loginWithFingerprint,
+            enabled = !state.busy && lockedSeconds == 0L,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) {
+            Text(stringResource(R.string.biometric_login_button, state.savedUsername.orEmpty()))
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
 
     if (config.otpEnabled && config.passwordEnabled) {
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {

@@ -14,6 +14,8 @@ import rdsco.fishino.app.auth.ApiResult
 import rdsco.fishino.app.auth.AuthApi
 import rdsco.fishino.app.auth.Captcha
 import rdsco.fishino.app.auth.CaptchaAnswer
+import rdsco.fishino.app.auth.CredentialInvalidatedException
+import rdsco.fishino.app.auth.CredentialVault
 import rdsco.fishino.app.auth.LoginConfig
 import rdsco.fishino.app.auth.LoginMethod
 import rdsco.fishino.app.auth.LoginPrefs
@@ -21,6 +23,7 @@ import rdsco.fishino.app.auth.OtpCode
 import rdsco.fishino.app.auth.Session
 import rdsco.fishino.app.auth.SessionEnd
 import rdsco.fishino.app.auth.SessionManager
+import javax.crypto.Cipher
 
 /** Text for the user: the server's own Persian message, or one of ours. */
 sealed interface UiText {
@@ -29,6 +32,11 @@ sealed interface UiText {
 }
 
 enum class OtpStep { EnterMobile, EnterCode }
+
+enum class BiometricPurpose { Login, Enroll }
+
+/** The screen shows the biometric prompt for [cipher], once per [id]. */
+class BiometricRequest(val id: Int, val purpose: BiometricPurpose, val cipher: Cipher)
 
 data class LoginUiState(
     val loadingConfig: Boolean = true,
@@ -51,7 +59,15 @@ data class LoginUiState(
     val error: UiText? = null,
     val lockedUntilMillis: Long = 0,
     val notice: UiText? = null,
+    /** Username whose password is saved for fingerprint sign-in with this employer. */
+    val savedUsername: String? = null,
+    val biometricAvailable: Boolean = false,
+    val biometricRequest: BiometricRequest? = null,
+    /** After a password login: "sign in with your fingerprint next time?" */
+    val enrollmentOffer: Boolean = false,
 ) {
+    val canUseBiometric: Boolean get() = savedUsername != null && biometricAvailable && config?.passwordEnabled != false
+
     val otpLength: Int get() = config?.otpLength ?: 5
 }
 
@@ -62,21 +78,43 @@ data class LoginUiState(
  */
 class LoginViewModel(
     private val api: AuthApi,
+    private val apiBaseUrl: String,
     private val sessions: SessionManager,
     private val prefs: LoginPrefs,
+    private val vault: CredentialVault,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LoginUiState())
     val state: StateFlow<LoginUiState> = _state.asStateFlow()
 
+    /** A password login that waits for the answer to the fingerprint offer. */
+    private class PendingEnrollment(val session: Session, val username: String, val password: String)
+
+    private var pendingEnrollment: PendingEnrollment? = null
+    private var biometricRequestId = 0
+
+    /**
+     * Open the fingerprint prompt by itself: when the app starts and after
+     * a timeout, not after the user signed out on purpose.
+     */
+    private var autoPromptPending = true
+
     init {
         loadConfig()
+
+        viewModelScope.launch {
+            vault.status.collect { status ->
+                _state.update { it.copy(savedUsername = status.savedFor(apiBaseUrl), biometricAvailable = vault.isAvailable()) }
+                maybeAutoPrompt()
+            }
+        }
 
         // This view model outlives a session; when one ends, explain why and start over.
         viewModelScope.launch {
             sessions.lastEnd.collect { end ->
                 if (end == null) return@collect
+                autoPromptPending = end.first == SessionEnd.Timeout || end.first == SessionEnd.Expired
                 _state.update {
                     it.copy(
                         notice = endNotice(end.first, end.second),
@@ -87,6 +125,8 @@ class LoginViewModel(
                     )
                 }
                 sessions.consumeLastEnd()
+                _state.update { it.copy(biometricAvailable = vault.isAvailable()) }
+                maybeAutoPrompt()
             }
         }
     }
@@ -110,6 +150,7 @@ class LoginViewModel(
                             mobile = it.mobile.ifEmpty { remembered.mobile },
                         )
                     }
+                    maybeAutoPrompt()
                 }
                 is ApiResult.Failed -> _state.update { it.copy(loadingConfig = false, configError = result.error.toUiText()) }
             }
@@ -162,10 +203,122 @@ class LoginViewModel(
         submit(
             call = { deviceId -> api.login(current.username.trim(), current.password, deviceId, current.captchaAnswerOrNull()) },
             onSuccess = { session ->
-                prefs.rememberPassword(current.username.trim())
-                signedIn(session)
+                val username = current.username.trim()
+                prefs.rememberPassword(username)
+
+                if (runCatching { vault.shouldOffer(apiBaseUrl, username) }.getOrDefault(false)) {
+                    pendingEnrollment = PendingEnrollment(session, username, current.password)
+                    _state.update { it.copy(password = "", enrollmentOffer = true) }
+                } else {
+                    signedIn(session)
+                }
             },
         )
+    }
+
+    /** Sign in with the password saved for fingerprint sign-in: first the prompt. */
+    fun loginWithFingerprint() {
+        val current = _state.value
+        if (!canSubmit(current) || current.biometricRequest != null) return
+        if (current.captcha != null && current.captchaAnswer.isEmpty()) return showError(R.string.login_error_captcha)
+
+        viewModelScope.launch {
+            val saved = vault.saved(apiBaseUrl) ?: return@launch
+            val cipher = try {
+                vault.decryptionCipher(saved)
+            } catch (e: CredentialInvalidatedException) {
+                return@launch showError(R.string.biometric_error_invalidated)
+            } catch (e: Exception) {
+                return@launch showError(R.string.biometric_error_unavailable)
+            }
+
+            _state.update { it.copy(biometricRequest = BiometricRequest(++biometricRequestId, BiometricPurpose.Login, cipher), error = null) }
+        }
+    }
+
+    /** The screen took the request and is showing the prompt. */
+    fun onBiometricShown(id: Int) {
+        _state.update { if (it.biometricRequest?.id == id) it.copy(biometricRequest = null) else it }
+    }
+
+    /** The prompt accepted the fingerprint; [cipher] is now unlocked. */
+    fun onBiometricSucceeded(purpose: BiometricPurpose, cipher: Cipher) {
+        when (purpose) {
+            BiometricPurpose.Login -> viewModelScope.launch { loginWithSavedPassword(cipher) }
+            BiometricPurpose.Enroll -> viewModelScope.launch {
+                val pending = pendingEnrollment ?: return@launch
+                runCatching { vault.save(apiBaseUrl, pending.username, pending.password, cipher) }
+                    .onFailure { showError(R.string.biometric_error_unavailable) }
+                finishEnrollment()
+            }
+        }
+    }
+
+    /** The prompt was cancelled ([message] null) or failed (too many tries, …). */
+    fun onBiometricFailed(purpose: BiometricPurpose, message: String?) {
+        when (purpose) {
+            BiometricPurpose.Login -> message?.let { text -> _state.update { it.copy(error = UiText.Server(text)) } }
+            BiometricPurpose.Enroll -> finishEnrollment()
+        }
+    }
+
+    fun acceptEnrollment() {
+        _state.update { it.copy(enrollmentOffer = false) }
+        val cipher = runCatching { vault.encryptionCipher() }.getOrNull() ?: return finishEnrollment()
+        _state.update { it.copy(biometricRequest = BiometricRequest(++biometricRequestId, BiometricPurpose.Enroll, cipher)) }
+    }
+
+    fun declineEnrollment() {
+        _state.update { it.copy(enrollmentOffer = false) }
+        val pending = pendingEnrollment ?: return
+
+        viewModelScope.launch {
+            runCatching { vault.setDeclined(apiBaseUrl, pending.username, declined = true) }
+            finishEnrollment()
+        }
+    }
+
+    private suspend fun loginWithSavedPassword(cipher: Cipher) {
+        val saved = vault.saved(apiBaseUrl) ?: return
+        val password = runCatching { vault.decrypt(saved, cipher) }.getOrNull()
+            ?: return showError(R.string.biometric_error_unavailable)
+        val current = _state.value
+
+        _state.update { it.copy(method = LoginMethod.Password, username = saved.username) }
+
+        submit(
+            call = { deviceId -> api.login(saved.username, password, deviceId, current.captchaAnswerOrNull()) },
+            onSuccess = { session ->
+                prefs.rememberPassword(saved.username)
+                signedIn(session)
+            },
+            onFailure = { error ->
+                when (error.code) {
+                    // Changed on the web since it was saved: forget it, the next password login offers it again.
+                    "invalid_credentials" -> {
+                        runCatching { vault.clear() }
+                        _state.update { it.copy(error = UiText.Res(R.string.biometric_error_password_changed)) }
+                    }
+                    // The server wants a captcha first: the password is filled in, the user answers and taps "login".
+                    "captcha_required", "captcha_invalid" -> _state.update { it.copy(password = password) }
+                }
+            },
+        )
+    }
+
+    private fun finishEnrollment() {
+        val pending = pendingEnrollment ?: return
+        pendingEnrollment = null
+        signedIn(pending.session)
+    }
+
+    private fun maybeAutoPrompt() {
+        val current = _state.value
+        if (!autoPromptPending || current.config == null || !current.canUseBiometric) return
+        if (pendingEnrollment != null || sessions.session.value != null) return
+
+        autoPromptPending = false
+        loginWithFingerprint()
     }
 
     fun sendOtp() {
@@ -202,7 +355,7 @@ class LoginViewModel(
         submit(
             call = { deviceId -> api.verifyOtp(current.mobile, current.code, token, deviceId) },
             onSuccess = { session -> signedIn(session) },
-            onFailure = { _state.update { it.copy(code = "") } },
+            onFailure = { _ -> _state.update { it.copy(code = "") } },
         )
     }
 
@@ -215,7 +368,8 @@ class LoginViewModel(
     private fun canSubmit(state: LoginUiState): Boolean = !state.busy && clock() >= state.lockedUntilMillis
 
     private fun signedIn(session: Session) {
-        _state.update { it.copy(password = "", code = "", captcha = null, captchaAnswer = "") }
+        autoPromptPending = false
+        _state.update { it.copy(password = "", code = "", captcha = null, captchaAnswer = "", biometricRequest = null) }
         sessions.signedIn(session, api)
     }
 
@@ -229,7 +383,7 @@ class LoginViewModel(
     private fun <T> submit(
         call: suspend (deviceId: String) -> ApiResult<T>,
         onSuccess: suspend (T) -> Unit,
-        onFailure: (ApiError) -> Unit = {},
+        onFailure: suspend (ApiError) -> Unit = {},
     ) {
         _state.update { it.copy(busy = true, error = null, notice = null) }
 
@@ -274,7 +428,7 @@ class LoginViewModel(
 
     private fun endNotice(reason: SessionEnd, message: String?): UiText? =
         when (reason) {
-            SessionEnd.SignedOut -> null
+            SessionEnd.SignedOut, SessionEnd.Timeout -> null
             SessionEnd.Expired -> UiText.Res(R.string.login_notice_expired)
             SessionEnd.Revoked -> message?.let(UiText::Server) ?: UiText.Res(R.string.login_notice_revoked)
         }

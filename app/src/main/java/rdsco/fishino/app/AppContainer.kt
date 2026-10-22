@@ -4,12 +4,15 @@ import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import rdsco.fishino.app.auth.ApiClient
 import rdsco.fishino.app.auth.AuthApi
+import rdsco.fishino.app.auth.CredentialVault
 import rdsco.fishino.app.auth.LoginPrefs
 import rdsco.fishino.app.auth.SessionManager
 import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
+import rdsco.fishino.app.panel.PanelApi
 import okhttp3.OkHttpClient
 import rdsco.fishino.app.update.ApkInstaller
 import rdsco.fishino.app.update.GitHubReleases
@@ -48,8 +51,14 @@ class AppContainer(context: Context) {
 
     val loginPrefs = LoginPrefs(context)
 
+    val credentialVault = CredentialVault(context)
+
     /** The API of the employer's own Fishino, for the address the license manager gave. */
-    fun authApi(apiBaseUrl: String) = AuthApi(httpClient, apiBaseUrl, userAgent)
+    private fun apiClient(apiBaseUrl: String) = ApiClient(httpClient, apiBaseUrl, userAgent)
+
+    fun authApi(apiBaseUrl: String) = AuthApi(apiClient(apiBaseUrl))
+
+    fun panelApi(apiBaseUrl: String) = PanelApi(apiClient(apiBaseUrl))
 
     val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, BuildConfig.UPDATE_ASSET_PATTERN, userAgent)
 

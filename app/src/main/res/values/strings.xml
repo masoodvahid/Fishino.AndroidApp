@@ -21,7 +21,6 @@
     <string name="error_server">خطای سرور. کمی بعد دوباره تلاش کنید.</string>
 
     <string name="home_connected_to">متصل به</string>
-    <string name="home_placeholder">ورود و امکانات اپ در مرحله بعد اضافه می‌شود.</string>
     <string name="home_change_employer">تغییر کارفرما</string>
     <string name="home_change_employer_confirm">اتصال به این کارفرما حذف شود؟ برای ادامه باید دوباره کد کارفرما را وارد کنید.</string>
     <string name="home_version">نسخه %1$s</string>
@@ -77,8 +76,45 @@
     <string name="login_notice_expired">زمان ورود شما به پایان رسید. دوباره وارد شوید.</string>
     <string name="login_notice_revoked">از حساب خارج شدید؛ ممکن است با گوشی دیگری وارد شده باشید. دوباره وارد شوید.</string>
 
+    <string name="biometric_login_button">ورود با اثر انگشت (%1$s)</string>
+    <string name="biometric_prompt_login_title">ورود به فیشی‌نو</string>
+    <string name="biometric_prompt_enroll_title">فعال‌سازی ورود با اثر انگشت</string>
+    <string name="biometric_prompt_use_password">ورود با رمز عبور</string>
+    <string name="biometric_offer_title">ورود سریع با اثر انگشت</string>
+    <string name="biometric_offer_text">دفعه‌های بعد بدون تایپ رمز، با اثر انگشت وارد شوید؟ رمز عبور به‌صورت رمزگذاری‌شده فقط روی همین گوشی نگه داشته می‌شود و بدون اثر انگشت شما قابل استفاده نیست.</string>
+    <string name="biometric_offer_accept">فعال شود</string>
+    <string name="biometric_offer_decline">الان نه</string>
+    <string name="biometric_error_invalidated">اثر انگشت‌های این گوشی تغییر کرده است و برای امنیت، ورود با اثر انگشت غیرفعال شد. با رمز عبور وارد شوید تا دوباره پیشنهاد شود.</string>
+    <string name="biometric_error_unavailable">ورود با اثر انگشت انجام نشد. با رمز عبور وارد شوید.</string>
+    <string name="biometric_error_password_changed">رمز عبور شما تغییر کرده است. با رمز جدید وارد شوید تا ورود با اثر انگشت دوباره فعال شود.</string>
+
     <string name="home_greeting">سلام %1$s</string>
     <string name="home_logout">خروج از حساب</string>
+    <string name="home_refresh">به‌روزرسانی</string>
+    <string name="home_load_error_retry">تلاش دوباره</string>
+    <string name="home_profile_employee_number">شماره پرسنلی</string>
+    <string name="home_profile_national_code">کد ملی</string>
+    <string name="home_profile_mobile">شماره همراه</string>
+    <string name="home_profile_work_place">محل خدمت</string>
+    <string name="home_pending_signatures">%1$d سند منتظر امضای شماست. تا امضا نشود، اسناد دیگر نمایش داده نمی‌شوند.</string>
+    <string name="home_documents">اسناد اخیر</string>
+    <string name="home_requests">درخواست‌های اخیر</string>
+    <string name="home_see_all">همه</string>
+    <string name="home_documents_empty">هنوز سندی برای شما منتشر نشده است.</string>
+    <string name="home_documents_hidden">اسناد پس از انجام مورد بالا نمایش داده می‌شوند.</string>
+    <string name="home_requests_empty">هنوز درخواستی ثبت نکرده‌اید.</string>
+    <string name="home_document_needs_signature">نیاز به امضا</string>
+    <string name="home_document_signed">امضا شده</string>
+    <string name="home_request_tracking">کد پیگیری %1$s</string>
+    <string name="home_request_comment">نظر بررسی‌کننده: %1$s</string>
+    <string name="home_biometric_title">ورود با اثر انگشت</string>
+    <string name="home_biometric_on">فعال است؛ دفعه بعد با اثر انگشت وارد می‌شوید.</string>
+    <string name="home_biometric_off">غیرفعال</string>
+    <string name="home_biometric_pending">در ورود بعدی با رمز عبور پیشنهاد می‌شود.</string>
+    <string name="list_documents_title">اسناد من</string>
+    <string name="list_requests_title">درخواست‌های من</string>
+    <string name="list_back">بازگشت</string>
+    <string name="list_load_more_error">ادامه فهرست دریافت نشد.</string>
 
     <string name="action_ok">باشه</string>
     <string name="action_confirm">تأیید</string>
