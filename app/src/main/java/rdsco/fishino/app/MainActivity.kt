@@ -21,6 +21,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import rdsco.fishino.app.employer.Employer
 import rdsco.fishino.app.ui.home.HomeScreen
+import rdsco.fishino.app.ui.login.LoginScreen
+import rdsco.fishino.app.ui.login.LoginViewModel
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
 import rdsco.fishino.app.ui.onboarding.EmployerCodeViewModel
 import rdsco.fishino.app.ui.theme.FishinoTheme
@@ -81,12 +83,43 @@ class MainActivity : ComponentActivity() {
                                 )
                                 EmployerCodeScreen(onboarding)
                             } else {
-                                HomeScreen(
-                                    employer = employer,
-                                    appVersion = BuildConfig.VERSION_NAME,
-                                    onCheckUpdates = if (updates.enabled) updates::checkNow else null,
-                                    onChangeEmployer = { scope.launch { container.employerStore.clear() } },
-                                )
+                                val session by container.sessionManager.session.collectAsStateWithLifecycle()
+                                val signedIn = session
+
+                                if (signedIn == null) {
+                                    val login: LoginViewModel = viewModel(
+                                        // A new view model (and API address) per employer.
+                                        key = "login:${employer.apiBaseUrl}",
+                                        factory = viewModelFactory {
+                                            initializer {
+                                                LoginViewModel(
+                                                    api = container.authApi(employer.apiBaseUrl),
+                                                    sessions = container.sessionManager,
+                                                    prefs = container.loginPrefs,
+                                                )
+                                            }
+                                        },
+                                    )
+                                    LoginScreen(
+                                        viewModel = login,
+                                        employerName = employer.name,
+                                        appVersion = BuildConfig.VERSION_NAME,
+                                        onChangeEmployer = {
+                                            scope.launch {
+                                                container.loginPrefs.forgetAccount()
+                                                container.employerStore.clear()
+                                            }
+                                        },
+                                    )
+                                } else {
+                                    HomeScreen(
+                                        employer = employer,
+                                        user = signedIn.user,
+                                        appVersion = BuildConfig.VERSION_NAME,
+                                        onCheckUpdates = if (updates.enabled) updates::checkNow else null,
+                                        onLogout = container.sessionManager::signOut,
+                                    )
+                                }
                             }
                         }
                     }

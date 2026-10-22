@@ -1,6 +1,9 @@
 package rdsco.fishino.app
 
 import android.app.Application
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ProcessLifecycleOwner
 
 class FishinoApp : Application() {
 
@@ -10,5 +13,12 @@ class FishinoApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+
+        // Leaving the app for more than a minute signs the user out.
+        ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onStart(owner: LifecycleOwner) = container.sessionManager.onAppForeground()
+
+            override fun onStop(owner: LifecycleOwner) = container.sessionManager.onAppBackground()
+        })
     }
 }

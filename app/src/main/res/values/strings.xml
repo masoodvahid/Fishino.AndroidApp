@@ -49,6 +49,37 @@
     <string name="update_error_signature">فایل نسخه جدید با امضای رسمی فیشی‌نو منتشر نشده و نصب نمی‌شود. با پشتیبانی تماس بگیرید.</string>
     <string name="update_error_not_newer">فایل منتشرشده از نسخه نصب‌شده جدیدتر نیست.</string>
 
+    <string name="login_title">ورود به فیشی‌نو</string>
+    <string name="login_method_password">رمز عبور</string>
+    <string name="login_method_otp">کد پیامکی</string>
+    <string name="login_username">نام کاربری</string>
+    <string name="login_password">رمز عبور</string>
+    <string name="login_show_password">نمایش</string>
+    <string name="login_hide_password">پنهان</string>
+    <string name="login_mobile">شماره همراه</string>
+    <string name="login_otp_hint">کد ورود به شماره همراهی که در سامانه ثبت شده است پیامک می‌شود.</string>
+    <string name="login_code">کد ورود</string>
+    <string name="login_send_code">دریافت کد ورود</string>
+    <string name="login_submit">ورود</string>
+    <string name="login_edit_mobile">ویرایش %1$s</string>
+    <string name="login_resend">ارسال دوباره کد</string>
+    <string name="login_resend_in">ارسال دوباره تا %1$s</string>
+    <string name="login_captcha">کد امنیتی</string>
+    <string name="login_captcha_hint">برای ادامه، عدد داخل تصویر را وارد کنید.</string>
+    <string name="login_captcha_refresh">تصویر جدید</string>
+    <string name="login_locked_countdown">تا %1$s دیگر امکان تلاش دوباره نیست.</string>
+    <string name="login_error_username">نام کاربری را وارد کنید.</string>
+    <string name="login_error_password">رمز عبور را وارد کنید.</string>
+    <string name="login_error_mobile">شماره همراه صحیح نیست؛ مثلاً 09121234567</string>
+    <string name="login_error_captcha">کد امنیتی را وارد کنید.</string>
+    <string name="login_error_unsupported">نسخه فیشی‌نوی کارفرمای شما هنوز از اپلیکیشن پشتیبانی نمی‌کند. با واحد منابع انسانی یا پشتیبانی تماس بگیرید.</string>
+    <string name="login_error_too_many">درخواست‌ها زیاد بوده است. کمی بعد دوباره تلاش کنید.</string>
+    <string name="login_notice_expired">زمان ورود شما به پایان رسید. دوباره وارد شوید.</string>
+    <string name="login_notice_revoked">از حساب خارج شدید؛ ممکن است با گوشی دیگری وارد شده باشید. دوباره وارد شوید.</string>
+
+    <string name="home_greeting">سلام %1$s</string>
+    <string name="home_logout">خروج از حساب</string>
+
     <string name="action_ok">باشه</string>
     <string name="action_confirm">تأیید</string>
     <string name="action_cancel">انصراف</string>

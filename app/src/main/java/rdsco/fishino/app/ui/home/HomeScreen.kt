@@ -10,41 +10,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import rdsco.fishino.app.R
+import rdsco.fishino.app.auth.AppUser
 import rdsco.fishino.app.employer.Employer
-import java.net.URI
 
 /**
- * Placeholder until login is built: shows which employer server the app is
- * bound to and lets the user switch employer.
+ * Placeholder until the app's features are built: who is signed in, for
+ * which employer, and sign-out.
  */
 @Composable
 fun HomeScreen(
     employer: Employer,
+    user: AppUser,
     appVersion: String,
     onCheckUpdates: (() -> Unit)?,
-    onChangeEmployer: () -> Unit,
+    onLogout: () -> Unit,
 ) {
-    var confirmChange by rememberSaveable { mutableStateOf(false) }
-
     Box(
         modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(20.dp),
         contentAlignment = Alignment.Center,
@@ -61,26 +55,27 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    stringResource(R.string.home_connected_to),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    stringResource(R.string.home_greeting, user.fullName.ifBlank { user.username }),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
                 )
-                Text(employer.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 Text(
-                    text = runCatching { URI(employer.apiBaseUrl).host }.getOrNull() ?: employer.apiBaseUrl,
-                    style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr),
+                    employer.name,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
                 Text(
                     stringResource(R.string.home_placeholder),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp),
                 )
-                TextButton(onClick = { confirmChange = true }) {
-                    Text(stringResource(R.string.home_change_employer))
+                OutlinedButton(onClick = onLogout, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.home_logout))
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(top = 8.dp))
                 Text(
                     stringResource(R.string.home_version, appVersion),
                     style = MaterialTheme.typography.bodySmall,
@@ -93,21 +88,5 @@ fun HomeScreen(
                 }
             }
         }
-    }
-
-    if (confirmChange) {
-        AlertDialog(
-            onDismissRequest = { confirmChange = false },
-            text = { Text(stringResource(R.string.home_change_employer_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmChange = false
-                    onChangeEmployer()
-                }) { Text(stringResource(R.string.action_confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmChange = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
     }
 }

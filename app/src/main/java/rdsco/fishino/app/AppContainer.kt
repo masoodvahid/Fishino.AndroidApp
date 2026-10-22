@@ -1,6 +1,12 @@
 package rdsco.fishino.app
 
 import android.content.Context
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import rdsco.fishino.app.auth.AuthApi
+import rdsco.fishino.app.auth.LoginPrefs
+import rdsco.fishino.app.auth.SessionManager
 import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
@@ -33,7 +39,17 @@ class AppContainer(context: Context) {
         verifier = DirectoryTokenVerifier(BuildConfig.DIRECTORY_PUBLIC_KEY),
     )
 
-    private val userAgent = "Fishino-Android/${BuildConfig.VERSION_NAME}"
+    val userAgent = "Fishino-Android/${BuildConfig.VERSION_NAME}"
+
+    /** Lives as long as the app process: the session and its token refresh. */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    val sessionManager = SessionManager(appScope)
+
+    val loginPrefs = LoginPrefs(context)
+
+    /** The API of the employer's own Fishino, for the address the license manager gave. */
+    fun authApi(apiBaseUrl: String) = AuthApi(httpClient, apiBaseUrl, userAgent)
 
     val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, BuildConfig.UPDATE_ASSET_PATTERN, userAgent)
 
