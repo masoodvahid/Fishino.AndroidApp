@@ -90,27 +90,31 @@ class PanelApi(private val http: ApiClient) {
             employer = data.string("employer"),
         )
 
-        fun parseRequirement(data: JsonObject): Requirement? = Requirement(
-            key = data.string("key") ?: return null,
-            title = data.string("title").orEmpty(),
-            message = data.string("message").orEmpty(),
-        )
+        fun parseRequirement(data: JsonObject): Requirement? {
+            val key = data.string("key") ?: return null
+            return Requirement(key, title = data.string("title").orEmpty(), message = data.string("message").orEmpty())
+        }
 
-        fun parseDocument(data: JsonObject): DocumentItem? = DocumentItem(
-            id = data.long("id") ?: return null,
-            title = data.string("title").orEmpty(),
-            templateTitle = data.string("template_title").orEmpty(),
-            dateLabel = data.string("date_label").orEmpty(),
-            needsSignature = data.bool("needs_signature") == true,
-            signatureRequired = data.bool("signature_required") == true,
-            signed = data.bool("signed") == true,
-        )
+        fun parseDocument(data: JsonObject): DocumentItem? {
+            val id = data.long("id") ?: return null
+
+            return DocumentItem(
+                id = id,
+                title = data.string("title").orEmpty(),
+                templateTitle = data.string("template_title").orEmpty(),
+                dateLabel = data.string("date_label").orEmpty(),
+                needsSignature = data.bool("needs_signature") == true,
+                signatureRequired = data.bool("signature_required") == true,
+                signed = data.bool("signed") == true,
+            )
+        }
 
         fun parseRequest(data: JsonObject): RequestItem? {
+            val id = data.long("id") ?: return null
             val status = data.obj("status")
 
             return RequestItem(
-                id = data.long("id") ?: return null,
+                id = id,
                 trackingCode = data.string("tracking_code").orEmpty(),
                 title = data.string("title").orEmpty(),
                 status = when (status?.string("key")) {

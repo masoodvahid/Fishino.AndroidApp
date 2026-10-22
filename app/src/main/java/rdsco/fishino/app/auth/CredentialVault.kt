@@ -77,13 +77,12 @@ class CredentialVault(context: Context) {
         val prefs = runCatching { dataStore.data.first() }.getOrNull() ?: return null
         if (prefs[API_BASE_URL] != apiBaseUrl) return null
 
+        val username = prefs[USERNAME] ?: return null
+        val iv = prefs[IV] ?: return null
+        val ciphertext = prefs[CIPHERTEXT] ?: return null
+
         return runCatching {
-            SavedCredential(
-                apiBaseUrl = apiBaseUrl,
-                username = prefs[USERNAME] ?: return null,
-                iv = Base64.decode(prefs[IV] ?: return null, Base64.NO_WRAP),
-                ciphertext = Base64.decode(prefs[CIPHERTEXT] ?: return null, Base64.NO_WRAP),
-            )
+            SavedCredential(apiBaseUrl, username, Base64.decode(iv, Base64.NO_WRAP), Base64.decode(ciphertext, Base64.NO_WRAP))
         }.getOrNull()
     }
 
