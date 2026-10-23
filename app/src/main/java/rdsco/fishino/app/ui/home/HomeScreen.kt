@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,9 +13,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -34,12 +39,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rdsco.fishino.app.R
 import rdsco.fishino.app.panel.DocumentItem
 import rdsco.fishino.app.panel.HomeData
-import rdsco.fishino.app.panel.Profile
 import rdsco.fishino.app.panel.ProfileApi
 import rdsco.fishino.app.panel.RequestItem
 import rdsco.fishino.app.ui.common.AuthedImage
 import rdsco.fishino.app.ui.common.Banner
 import rdsco.fishino.app.ui.common.Chip
+import rdsco.fishino.app.ui.common.ContentMaxWidth
 import rdsco.fishino.app.ui.common.EmptyText
 import rdsco.fishino.app.ui.common.LoadError
 import rdsco.fishino.app.ui.common.Loading
@@ -51,19 +56,23 @@ import rdsco.fishino.app.ui.common.tone
 /** Where the home screen sends the user. */
 class HomeActions(
     val openDocuments: () -> Unit,
+    val openDocument: (Long) -> Unit,
     val openRequests: () -> Unit,
     val openRequest: (Long) -> Unit,
+    val newRequest: () -> Unit,
+    val openNews: () -> Unit,
+    val openNewsItem: (Long) -> Unit,
     /** A profile section ("mobile", "signature", …) where a pending requirement is done. */
     val openProfileSection: (String) -> Unit,
 )
 
 /**
- * After sign-in: the employee's profile card, what they must do first, and
- * the latest documents and requests.
+ * After sign-in: the latest announcements, a welcome, what the user must do
+ * first, and the latest documents and requests.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, actions: HomeActions, avatarVersion: Int) {
+fun HomeScreen(viewModel: HomeViewModel, actions: HomeActions) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // Fresh data each time the home screen is shown (sign-in, back from another screen).
     LaunchedEffect(Unit) { viewModel.refresh() }
@@ -82,7 +91,7 @@ fun HomeScreen(viewModel: HomeViewModel, actions: HomeActions, avatarVersion: In
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             when {
-                data != null -> homeSections(data, actions, avatarVersion)
+                data != null -> homeSections(data, actions)
                 state.loading -> item { Loading() }
                 else -> item { LoadError(state.error, onRetry = viewModel::refresh) }
             }
@@ -95,8 +104,19 @@ fun HomeScreen(viewModel: HomeViewModel, actions: HomeActions, avatarVersion: In
     }
 }
 
-private fun LazyListScope.homeSections(data: HomeData, actions: HomeActions, avatarVersion: Int) {
-    item { ProfileCard(data.profile, avatarVersion) }
+private fun LazyListScope.homeSections(data: HomeData, actions: HomeActions) {
+    if (data.latestNews.isNotEmpty()) {
+        item { NewsSlideshow(data.latestNews, onOpen = actions.openNewsItem, onOpenAll = actions.openNews) }
+    }
+
+    item {
+        Text(
+            stringResource(R.string.home_welcome, data.profile.fullName.ifBlank { data.profile.username }),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
+        )
+    }
 
     data.requirement?.let { requirement ->
         item {
@@ -124,7 +144,7 @@ private fun LazyListScope.homeSections(data: HomeData, actions: HomeActions, ava
     if (data.recentDocuments.isEmpty()) {
         item { EmptyText(stringResource(if (data.requirement != null) R.string.home_documents_hidden else R.string.home_documents_empty)) }
     } else {
-        items(data.recentDocuments, key = { "document-${it.id}" }) { DocumentRow(it) }
+        items(data.recentDocuments, key = { "document-${it.id}" }) { document -> DocumentRow(document) { actions.openDocument(document.id) } }
     }
 
     item {
@@ -141,41 +161,15 @@ private fun LazyListScope.homeSections(data: HomeData, actions: HomeActions, ava
     } else {
         items(data.recentRequests, key = { "request-${it.id}" }) { request -> RequestRow(request) { actions.openRequest(request.id) } }
     }
-}
 
-@Composable
-private fun ProfileCard(profile: Profile, avatarVersion: Int) {
-    PanelCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Avatar(profile.fullName, avatarVersion, Modifier.size(52.dp))
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(stringResource(R.string.home_greeting, profile.fullName.ifBlank { profile.username }), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                listOfNotNull(profile.jobTitle, profile.employer).joinToString(" · ").takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
-
-        val fields = listOfNotNull(
-            profile.employeeNumber?.let { R.string.home_profile_employee_number to it.persianDigits() },
-            profile.nationalCode?.let { R.string.home_profile_national_code to it.persianDigits() },
-            profile.mobile?.let { R.string.home_profile_mobile to it.persianDigits() },
-            profile.workPlace?.let { R.string.home_profile_work_place to it },
-        )
-
-        if (fields.isNotEmpty()) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(vertical = 12.dp))
-            fields.chunked(2).forEach { pair ->
-                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                    pair.forEach { (label, value) ->
-                        Column(Modifier.weight(1f)) {
-                            Text(stringResource(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(value, style = MaterialTheme.typography.bodyMedium)
-                        }
-                    }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
+    item {
+        OutlinedButton(
+            onClick = actions.newRequest,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth().height(48.dp),
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null)
+            Text(stringResource(R.string.requests_new))
         }
     }
 }
@@ -204,8 +198,8 @@ fun Avatar(name: String, version: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun DocumentRow(document: DocumentItem) {
-    PanelCard {
+fun DocumentRow(document: DocumentItem, onClick: () -> Unit) {
+    PanelCard(onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(

@@ -240,6 +240,30 @@
     <string name="profile_logs_desc">۲۰ ورود اخیر به حساب شما</string>
     <string name="profile_logs_empty">هنوز گزارشی ثبت نشده است.</string>
 
+    <string name="notify_channel_name">پیام‌های فیشی‌نو</string>
+    <string name="notify_channel_description">پیام‌های جدید کارفرما و تغییر وضعیت درخواست‌ها</string>
+    <string name="notify_text">%1$d پیام خوانده‌نشده؛ برای مشاهده وارد فیشی‌نو شوید.</string>
+    <string name="menu_close">بستن منو</string>
+    <string name="inbox_title">پیام‌ها</string>
+    <string name="inbox_unread">%1$d پیام خوانده‌نشده</string>
+    <string name="inbox_all_read">پیام خوانده‌نشده‌ای ندارید</string>
+    <string name="inbox_read_all">خواندن همه</string>
+    <string name="inbox_empty">هنوز پیامی برای شما ارسال نشده است.</string>
+    <string name="inbox_open_request">مشاهده درخواست</string>
+    <string name="inbox_open_document">مشاهده سند</string>
+    <string name="channels_title">کانال‌های ارتباطی</string>
+    <string name="home_welcome">%1$s گرامی، خوش آمدید</string>
+    <string name="home_all_news">همه اطلاعیه‌ها</string>
+    <string name="document_title">سند</string>
+    <string name="document_signature_mandatory">امضای الزامی</string>
+    <string name="document_signed_at">امضا شده در %1$s</string>
+    <string name="document_view_pdf">مشاهده سند (PDF)</string>
+    <string name="document_sign_title">امضای الکترونیک</string>
+    <string name="document_sign_ready">همه شرایط امضا کامل است. کد تأیید به شماره %1$s پیامک می‌شود.</string>
+    <string name="document_sign_not_ready">برای امضای این سند ابتدا موارد بالا را کامل کنید.</string>
+    <string name="document_send_code">دریافت کد امضا</string>
+    <string name="document_sign">امضای سند</string>
+
     <string name="action_ok">باشه</string>
     <string name="action_confirm">تأیید</string>
     <string name="action_cancel">انصراف</string>

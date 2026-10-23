@@ -1,5 +1,6 @@
 package rdsco.fishino.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -20,7 +21,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import rdsco.fishino.app.employer.Employer
+import rdsco.fishino.app.notify.MessageNotifier
+import rdsco.fishino.app.ui.documents.DocumentViewModel
 import rdsco.fishino.app.ui.home.HomeViewModel
+import rdsco.fishino.app.ui.inbox.InboxViewModel
 import rdsco.fishino.app.ui.news.NewsViewModel
 import rdsco.fishino.app.ui.profile.ProfileViewModel
 import rdsco.fishino.app.ui.requests.RequestsViewModel
@@ -44,6 +48,17 @@ private sealed interface EmployerState {
 /** A FragmentActivity: the biometric prompt is shown through a fragment. */
 class MainActivity : FragmentActivity() {
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeOpenRequest(intent)
+    }
+
+    /** A phone notification asks to open the inbox (after signing in). */
+    private fun takeOpenRequest(intent: Intent?) {
+        intent?.getStringExtra(MessageNotifier.EXTRA_OPEN)?.let { (application as FishinoApp).container.pendingOpen.value = it }
+        intent?.removeExtra(MessageNotifier.EXTRA_OPEN)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -52,6 +67,7 @@ class MainActivity : FragmentActivity() {
         enableEdgeToEdge(statusBarStyle = lightBars, navigationBarStyle = lightBars)
 
         val container = (application as FishinoApp).container
+        takeOpenRequest(intent)
 
         setContent {
             FishinoTheme {
@@ -104,6 +120,7 @@ class MainActivity : FragmentActivity() {
                                                     sessions = container.sessionManager,
                                                     prefs = container.loginPrefs,
                                                     vault = container.credentialVault,
+                                                    messageSync = container.messageSync,
                                                 )
                                             }
                                         },
@@ -116,6 +133,7 @@ class MainActivity : FragmentActivity() {
                                             scope.launch {
                                                 container.loginPrefs.forgetAccount()
                                                 runCatching { container.credentialVault.clearAll() }
+                                                container.messageSync.stop()
                                                 container.employerStore.clear()
                                             }
                                         },
@@ -124,10 +142,13 @@ class MainActivity : FragmentActivity() {
                                     // Per employer and user: nothing of another account is shown.
                                     val key = "${employer.apiBaseUrl}:${signedIn.user.id}"
                                     val services = remember(employer.apiBaseUrl) { container.panelServices(employer.apiBaseUrl) }
+                                    val pendingOpen by container.pendingOpen.collectAsStateWithLifecycle()
                                     val viewModels = ShellViewModels(
                                         home = viewModel(key = "home:$key", factory = viewModelFactory { initializer { HomeViewModel(services) } }),
                                         news = viewModel(key = "news:$key", factory = viewModelFactory { initializer { NewsViewModel(services) } }),
                                         requests = viewModel(key = "requests:$key", factory = viewModelFactory { initializer { RequestsViewModel(services) } }),
+                                        inbox = viewModel(key = "inbox:$key", factory = viewModelFactory { initializer { InboxViewModel(services) } }),
+                                        document = viewModel(key = "document:$key", factory = viewModelFactory { initializer { DocumentViewModel(services) } }),
                                         profile = viewModel(
                                             key = "profile:$key",
                                             factory = viewModelFactory {
@@ -145,6 +166,8 @@ class MainActivity : FragmentActivity() {
                                         appVersion = BuildConfig.VERSION_NAME,
                                         onCheckUpdates = if (updates.enabled) updates::checkNow else null,
                                         onLogout = container.sessionManager::signOut,
+                                        pendingOpen = pendingOpen,
+                                        onPendingOpenHandled = { container.pendingOpen.value = null },
                                     )
                                 }
                             }

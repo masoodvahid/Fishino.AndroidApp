@@ -96,6 +96,9 @@ class AuthApi(private val http: ApiClient) {
                 fullName = user.string("full_name").orEmpty(),
                 mobile = user.string("mobile"),
             ),
+            sync = data.obj("sync")?.let { sync ->
+                sync.string("token")?.let { SyncGrant(it, sync.long("check_interval_seconds") ?: 6 * 3600L) }
+            },
         )
     }
 

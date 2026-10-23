@@ -33,8 +33,8 @@ import rdsco.fishino.app.ui.common.Loading
 import rdsco.fishino.app.ui.common.PagedList
 
 @Composable
-fun DocumentsScreen(viewModel: HomeViewModel) {
-    PagedListContent(viewModel.documents, stringResource(R.string.home_documents_empty)) { DocumentRow(it) }
+fun DocumentsScreen(viewModel: HomeViewModel, onOpen: (Long) -> Unit) {
+    PagedListContent(viewModel.documents, stringResource(R.string.home_documents_empty)) { document -> DocumentRow(document) { onOpen(document.id) } }
 }
 
 @Composable

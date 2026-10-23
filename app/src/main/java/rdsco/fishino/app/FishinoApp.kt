@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import rdsco.fishino.app.notify.MessageNotifier
 
 class FishinoApp : Application() {
 
@@ -13,6 +14,7 @@ class FishinoApp : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        MessageNotifier.createChannel(this)
 
         // Leaving the app for more than a minute signs the user out.
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {

@@ -23,6 +23,7 @@ import rdsco.fishino.app.auth.OtpCode
 import rdsco.fishino.app.auth.Session
 import rdsco.fishino.app.auth.SessionEnd
 import rdsco.fishino.app.auth.SessionManager
+import rdsco.fishino.app.notify.MessageSync
 import javax.crypto.Cipher
 
 /** Text for the user: the server's own Persian message, or one of ours. */
@@ -82,6 +83,7 @@ class LoginViewModel(
     private val sessions: SessionManager,
     private val prefs: LoginPrefs,
     private val vault: CredentialVault,
+    private val messageSync: MessageSync,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -371,6 +373,7 @@ class LoginViewModel(
         autoPromptPending = false
         _state.update { it.copy(password = "", code = "", captcha = null, captchaAnswer = "", biometricRequest = null) }
         sessions.signedIn(session, api)
+        session.sync?.let { grant -> viewModelScope.launch { messageSync.onSignedIn(apiBaseUrl, grant) } }
     }
 
     private fun LoginUiState.captchaAnswerOrNull(): CaptchaAnswer? =

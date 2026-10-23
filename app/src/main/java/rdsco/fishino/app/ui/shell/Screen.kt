@@ -32,6 +32,16 @@ sealed interface Screen {
         override val isRoot = true
     }
 
+    /** Opened from the menu's envelope and from phone notifications. */
+    data object Inbox : Screen {
+        override val route = "inbox"
+        override val isRoot = true
+    }
+
+    data class DocumentDetail(val id: Long) : Screen {
+        override val route = "documents/$id"
+    }
+
     data class NewsDetail(val id: Long) : Screen {
         override val route = "news/$id"
     }
@@ -53,7 +63,7 @@ sealed interface Screen {
     }
 
     companion object {
-        val roots: List<Screen> = listOf(Home, Documents, Requests, News, Profile)
+        val roots: List<Screen> = listOf(Home, Documents, Requests, News, Profile, Inbox)
 
         fun parse(route: String): Screen? {
             roots.firstOrNull { it.route == route }?.let { return it }
@@ -65,6 +75,7 @@ sealed interface Screen {
             return when (head) {
                 "news" -> tail.toLongOrNull()?.let(::NewsDetail)
                 "requests" -> tail.toLongOrNull()?.let(::RequestDetail)
+                "documents" -> tail.toLongOrNull()?.let(::DocumentDetail)
                 "forms" -> tail.toLongOrNull()?.let(::FormFill)
                 "profile" -> ProfileSection(tail)
                 else -> null

@@ -12,6 +12,9 @@ import rdsco.fishino.app.auth.SessionManager
 import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
+import kotlinx.coroutines.flow.MutableStateFlow
+import rdsco.fishino.app.notify.MessageSync
+import rdsco.fishino.app.notify.SyncTokenStore
 import rdsco.fishino.app.panel.PanelServices
 import rdsco.fishino.app.panel.SharedFiles
 import okhttp3.OkHttpClient
@@ -63,6 +66,14 @@ class AppContainer(context: Context) {
     fun panelServices(apiBaseUrl: String) = PanelServices(apiClient(apiBaseUrl), sessionManager, sharedFiles)
 
     val sharedFiles by lazy { SharedFiles(context.applicationContext) }
+
+    val syncTokenStore = SyncTokenStore(context)
+
+    /** The background check for new inbox messages. */
+    val messageSync = MessageSync(context, syncTokenStore)
+
+    /** A screen to open once signed in, e.g. the inbox from a phone notification. */
+    val pendingOpen = MutableStateFlow<String?>(null)
 
     val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, BuildConfig.UPDATE_ASSET_PATTERN, userAgent)
 

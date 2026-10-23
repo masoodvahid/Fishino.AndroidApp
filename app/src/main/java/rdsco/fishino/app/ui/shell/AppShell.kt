@@ -1,6 +1,7 @@
 package rdsco.fishino.app.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,6 +47,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +59,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,7 +72,12 @@ import rdsco.fishino.app.employer.Employer
 import rdsco.fishino.app.panel.PanelServices
 import rdsco.fishino.app.ui.common.ImageCache
 import rdsco.fishino.app.ui.common.LocalPanel
+import rdsco.fishino.app.notify.MessageNotifier
+import rdsco.fishino.app.ui.documents.DocumentScreen
+import rdsco.fishino.app.ui.documents.DocumentViewModel
 import rdsco.fishino.app.ui.home.Avatar
+import rdsco.fishino.app.ui.inbox.InboxScreen
+import rdsco.fishino.app.ui.inbox.InboxViewModel
 import rdsco.fishino.app.ui.home.DocumentsScreen
 import rdsco.fishino.app.ui.home.HomeActions
 import rdsco.fishino.app.ui.home.HomeScreen
@@ -91,6 +101,8 @@ class ShellViewModels(
     val news: NewsViewModel,
     val requests: RequestsViewModel,
     val profile: ProfileViewModel,
+    val inbox: InboxViewModel,
+    val document: DocumentViewModel,
 )
 
 private data class MenuItem(val screen: Screen, val label: Int, val icon: ImageVector)
@@ -119,6 +131,9 @@ fun AppShell(
     appVersion: String,
     onCheckUpdates: (() -> Unit)?,
     onLogout: () -> Unit,
+    /** A screen asked for from outside (a phone notification), and how to mark it handled. */
+    pendingOpen: String?,
+    onPendingOpenHandled: () -> Unit,
 ) {
     val stack = rememberSaveable(
         saver = listSaver<SnapshotStateList<Screen>, String>(
@@ -132,6 +147,9 @@ fun AppShell(
     val scope = rememberCoroutineScope()
     var confirmLogout by rememberSaveable { mutableStateOf(false) }
     val avatarVersion by viewModels.profile.avatarVersion.collectAsStateWithLifecycle()
+    val unread by services.unread.collectAsStateWithLifecycle()
+    val home by viewModels.home.state.collectAsStateWithLifecycle()
+    val channels = home.data?.channels.orEmpty()
 
     fun open(screen: Screen) {
         if (stack.last() != screen) stack.add(screen)
@@ -154,6 +172,15 @@ fun AppShell(
         if (stack.size > 1) stack.removeAt(stack.lastIndex)
     }
 
+    LaunchedEffect(pendingOpen) {
+        if (pendingOpen == MessageNotifier.OPEN_INBOX) {
+            openRoot(Screen.Inbox)
+            onPendingOpenHandled()
+        }
+    }
+
+    NotificationPermission()
+
     // Nothing of this user stays in memory or in the cache after sign-out.
     DisposableEffect(Unit) {
         onDispose {
@@ -171,14 +198,30 @@ fun AppShell(
             drawerContent = {
                 ModalDrawerSheet {
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        Row(Modifier.padding(20.dp).statusBarsPadding(), verticalAlignment = Alignment.CenterVertically) {
-                            Avatar(user.fullName, avatarVersion, Modifier.size(48.dp))
+                        // Closes the menu: at the top, on the left (the end side in right-to-left).
+                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 4.dp, end = 4.dp)) {
+                            Spacer(Modifier.weight(1f))
+                            IconButton(onClick = { scope.launch { drawer.close() } }) {
+                                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.menu_close))
+                            }
+                        }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { openRoot(Screen.Profile) }
+                                .padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Avatar(user.fullName, avatarVersion, Modifier.size(52.dp))
                             Column(Modifier.padding(start = 12.dp)) {
                                 Text(user.fullName.ifBlank { user.username }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(employer.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        InboxBox(unread) { openRoot(Screen.Inbox) }
+
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(top = 12.dp))
                         Spacer(Modifier.height(8.dp))
 
                         val root = stack.lastOrNull { it.isRoot } ?: Screen.Home
@@ -224,7 +267,7 @@ fun AppShell(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        title = { Text(if (current == Screen.Home) employer.name else title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         navigationIcon = {
                             if (current.isRoot) {
                                 IconButton(onClick = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } }) {
@@ -236,13 +279,23 @@ fun AppShell(
                                 }
                             }
                         },
+                        actions = {
+                            IconButton(onClick = { confirmLogout = true }) {
+                                Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
+                            }
+                        },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
                     )
                 },
+                floatingActionButton = {
+                    if (current.isRoot && channels.isNotEmpty()) ChannelsButton(channels)
+                },
+                // Bottom left: the end side in right-to-left.
+                floatingActionButtonPosition = FabPosition.End,
                 containerColor = MaterialTheme.colorScheme.background,
             ) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                    ScreenContent(current, viewModels, avatarVersion, ::open, ::openSubmitted)
+                    ScreenContent(current, viewModels, ::open, ::openSubmitted, ::openRoot)
                 }
             }
         }
@@ -267,9 +320,9 @@ fun AppShell(
 private fun ScreenContent(
     screen: Screen,
     viewModels: ShellViewModels,
-    avatarVersion: Int,
     open: (Screen) -> Unit,
     openSubmitted: (Long) -> Unit,
+    openRoot: (Screen) -> Unit,
 ) {
     val openSection: (String) -> Unit = { tab -> open(Screen.ProfileSection(tab)) }
 
@@ -277,14 +330,24 @@ private fun ScreenContent(
         Screen.Home -> HomeScreen(
             viewModel = viewModels.home,
             actions = HomeActions(
-                openDocuments = { open(Screen.Documents) },
-                openRequests = { open(Screen.Requests) },
+                openDocuments = { openRoot(Screen.Documents) },
+                openDocument = { open(Screen.DocumentDetail(it)) },
+                openRequests = { openRoot(Screen.Requests) },
                 openRequest = { open(Screen.RequestDetail(it)) },
+                newRequest = { open(Screen.Forms) },
+                openNews = { openRoot(Screen.News) },
+                openNewsItem = { open(Screen.NewsDetail(it)) },
                 openProfileSection = openSection,
             ),
-            avatarVersion = avatarVersion,
         )
-        Screen.Documents -> DocumentsScreen(viewModels.home)
+        Screen.Documents -> DocumentsScreen(viewModels.home) { open(Screen.DocumentDetail(it)) }
+        Screen.Inbox -> InboxScreen(viewModels.inbox) { link ->
+            when (link.type) {
+                "request" -> open(Screen.RequestDetail(link.id))
+                "report" -> open(Screen.DocumentDetail(link.id))
+            }
+        }
+        is Screen.DocumentDetail -> DocumentScreen(viewModels.document, screen.id, openSection)
         Screen.Requests -> RequestsScreen(viewModels.home, onNewRequest = { open(Screen.Forms) }, onOpen = { open(Screen.RequestDetail(it)) })
         Screen.News -> NewsListScreen(viewModels.news) { open(Screen.NewsDetail(it)) }
         Screen.Profile -> ProfileScreen(viewModels.profile, openSection)
@@ -300,6 +363,8 @@ private fun ScreenContent(
 private fun title(screen: Screen): String = stringResource(
     when (screen) {
         Screen.Home -> R.string.app_name
+        Screen.Inbox -> R.string.inbox_title
+        is Screen.DocumentDetail -> R.string.document_title
         Screen.Documents -> R.string.list_documents_title
         Screen.Requests -> R.string.list_requests_title
         Screen.News -> R.string.menu_news

@@ -38,7 +38,10 @@ class HomeViewModel(private val services: PanelServices) : ViewModel() {
         _state.update { it.copy(loading = true, error = null) }
         viewModelScope.launch {
             when (val result = services.authed.call { token -> services.panel.home(token) }) {
-                is ApiResult.Ok -> _state.update { it.copy(data = result.value, loading = false) }
+                is ApiResult.Ok -> {
+                    services.unread.value = result.value.unreadNotifications
+                    _state.update { it.copy(data = result.value, loading = false) }
+                }
                 is ApiResult.Failed -> _state.update { it.copy(loading = false, error = result.error.toUiText()) }
             }
         }

@@ -136,6 +136,8 @@ dependencies {
     // pinned because biometric 1.1.0 alone pulls a very old one.
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.fragment)
+    // Background check for new messages every few hours (phone notifications).
+    implementation(libs.androidx.work)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)

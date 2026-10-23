@@ -130,6 +130,52 @@ class PanelFeaturesApiTest {
     }
 
     @Test
+    fun `inbox messages, documents and home extras are read`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"ok":true,"data":{"items":[{"id":9,"title":"درخواست بررسی شد","body":"متن","is_read":false,
+                    "link":{"type":"request","id":12},"date_label":"1405/08/01 10:00"},{"id":8,"title":"x","body":"","is_read":true,"link":null}],
+                    "has_more":true,"unread_count":3}}""",
+                ),
+            )
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"ok":true,"data":{"id":5,"title":"فیش حقوقی مهر 1405","template_title":"فیش حقوقی","date_label":"مهر 1405",
+                    "can_sign":true,"signature_required":false,"signed":false,"signed_label":null,"masked_mobile":"0912•••789",
+                    "requirements":[{"key":"mobile","label":"تأیید","complete":true,"message":"ok","tab":"mobile"},
+                                    {"key":"shahkar","label":"شاهکار","complete":false,"message":"…","tab":"mobile"}]}}""",
+                ),
+            )
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"ok":true,"data":{"profile":{"full_name":"علی"},"requirement":null,"pending_signatures":0,"recent_reports":[],"recent_requests":[],
+                    "latest_news":[{"id":3,"title":"اطلاعیه","type":{"key":"announcement","label":"اطلاعیه"},"has_image":false}],
+                    "unread_notifications":2,
+                    "channels":[{"key":"telegram","label":"تلگرام","url":"https://t.me/x"},{"key":"bad","label":"x","url":"javascript:alert(1)"},
+                                {"key":"phone","label":"تلفن","url":"tel:02112345678"}]}}""",
+                ),
+            )
+
+            val http = client(server)
+            val inbox = (InboxApi(http).list("t", before = 20) as ApiResult.Ok).value
+            assertEquals(MessageLink("request", 12), inbox.items[0].link)
+            assertNull(inbox.items[1].link)
+            assertEquals(3, inbox.unread)
+            assertEquals("/api/v1/notifications?before=20", server.takeRequest().path)
+
+            val document = (DocumentApi(http).detail("t", 5) as ApiResult.Ok).value
+            assertEquals(false, document.readyToSign)
+            assertEquals("mobile", document.requirements[1].tab)
+
+            val home = (PanelApi(http).home("t") as ApiResult.Ok).value
+            assertEquals("اطلاعیه", home.latestNews.single().title)
+            assertEquals(2, home.unreadNotifications)
+            assertEquals(listOf("telegram", "phone"), home.channels.map { it.key })
+        }
+    }
+
+    @Test
     fun `shared file names never leave their folder`() {
         assertEquals("passwd", SharedFiles.safeName("../../etc/passwd"))
         assertEquals("آیین‌نامه_1.pdf".replace("‌", "_"), SharedFiles.safeName("آیین‌نامه 1.pdf"))

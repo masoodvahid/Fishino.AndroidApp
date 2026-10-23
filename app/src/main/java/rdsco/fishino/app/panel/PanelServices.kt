@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import rdsco.fishino.app.auth.ApiClient
 import rdsco.fishino.app.auth.SessionManager
@@ -24,6 +25,11 @@ class PanelServices(
     val news = NewsApi(http)
     val requests = RequestApi(http)
     val profile = ProfileApi(http)
+    val inbox = InboxApi(http)
+    val documents = DocumentApi(http)
+
+    /** Unread inbox messages, shown on the menu's envelope; updated by home and inbox. */
+    val unread = MutableStateFlow(0)
 }
 
 /**

@@ -55,7 +55,14 @@ data class HomeData(
     val pendingSignatures: Int,
     val recentDocuments: List<DocumentItem>,
     val recentRequests: List<RequestItem>,
+    /** The three latest news items, for the slideshow. */
+    val latestNews: List<NewsItem> = emptyList(),
+    val unreadNotifications: Int = 0,
+    val channels: List<Channel> = emptyList(),
 )
+
+/** A company channel (Telegram, Bale, phone, …): https or tel: only. */
+data class Channel(val key: String, val label: String, val url: String)
 
 data class Page<T>(val items: List<T>, val page: Int, val hasMore: Boolean, val total: Int)
 
@@ -69,6 +76,13 @@ class PanelApi(private val http: ApiClient) {
             pendingSignatures = data.int("pending_signatures") ?: 0,
             recentDocuments = data.objects("recent_reports").mapNotNull(::parseDocument),
             recentRequests = data.objects("recent_requests").mapNotNull(::parseRequest),
+            latestNews = data.objects("latest_news").mapNotNull(NewsApi::parseItem),
+            unreadNotifications = data.int("unread_notifications") ?: 0,
+            channels = data.objects("channels").mapNotNull { channel ->
+                val url = channel.string("url")?.takeIf { it.startsWith("https://") || it.startsWith("http://") || it.startsWith("tel:") }
+                    ?: return@mapNotNull null
+                Channel(channel.string("key").orEmpty(), channel.string("label").orEmpty(), url)
+            },
         )
     }
 

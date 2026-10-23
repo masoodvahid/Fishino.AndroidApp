@@ -11,7 +11,7 @@ class ScreenTest {
     fun `every screen survives saving its route`() {
         listOf(
             Screen.Home, Screen.Documents, Screen.Requests, Screen.News, Screen.Profile, Screen.Forms,
-            Screen.NewsDetail(12), Screen.RequestDetail(7), Screen.FormFill(3), Screen.ProfileSection("mobile"),
+            Screen.Inbox, Screen.NewsDetail(12), Screen.RequestDetail(7), Screen.DocumentDetail(9), Screen.FormFill(3), Screen.ProfileSection("mobile"),
         ).forEach { assertEquals(it, Screen.parse(it.route)) }
     }
 
