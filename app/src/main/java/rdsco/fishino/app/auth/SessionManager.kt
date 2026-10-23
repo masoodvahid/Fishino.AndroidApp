@@ -60,6 +60,14 @@ class SessionManager(
         if (_session.value?.token == token) end(SessionEnd.Revoked, null)
     }
 
+    /**
+     * The server refused this token for good (deactivated, no access) and
+     * said why: end the session with its message.
+     */
+    fun onRevoked(token: String, message: String?) {
+        if (_session.value?.token == token) end(SessionEnd.Revoked, message)
+    }
+
     private fun signOut(reason: SessionEnd) {
         val current = _session.value
         val currentApi = api

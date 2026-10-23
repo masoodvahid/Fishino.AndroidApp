@@ -20,8 +20,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import rdsco.fishino.app.employer.Employer
-import rdsco.fishino.app.ui.home.HomeScreen
 import rdsco.fishino.app.ui.home.HomeViewModel
+import rdsco.fishino.app.ui.news.NewsViewModel
+import rdsco.fishino.app.ui.profile.ProfileViewModel
+import rdsco.fishino.app.ui.requests.RequestsViewModel
+import rdsco.fishino.app.ui.shell.AppShell
+import rdsco.fishino.app.ui.shell.ShellViewModels
 import rdsco.fishino.app.ui.login.LoginScreen
 import rdsco.fishino.app.ui.login.LoginViewModel
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
@@ -117,23 +121,25 @@ class MainActivity : FragmentActivity() {
                                         },
                                     )
                                 } else {
-                                    val home: HomeViewModel = viewModel(
-                                        // Per employer and user: nothing of another account is shown.
-                                        key = "home:${employer.apiBaseUrl}:${signedIn.user.id}",
-                                        factory = viewModelFactory {
-                                            initializer {
-                                                HomeViewModel(
-                                                    api = container.panelApi(employer.apiBaseUrl),
-                                                    apiBaseUrl = employer.apiBaseUrl,
-                                                    sessions = container.sessionManager,
-                                                    vault = container.credentialVault,
-                                                    prefs = container.loginPrefs,
-                                                )
-                                            }
-                                        },
+                                    // Per employer and user: nothing of another account is shown.
+                                    val key = "${employer.apiBaseUrl}:${signedIn.user.id}"
+                                    val services = remember(employer.apiBaseUrl) { container.panelServices(employer.apiBaseUrl) }
+                                    val viewModels = ShellViewModels(
+                                        home = viewModel(key = "home:$key", factory = viewModelFactory { initializer { HomeViewModel(services) } }),
+                                        news = viewModel(key = "news:$key", factory = viewModelFactory { initializer { NewsViewModel(services) } }),
+                                        requests = viewModel(key = "requests:$key", factory = viewModelFactory { initializer { RequestsViewModel(services) } }),
+                                        profile = viewModel(
+                                            key = "profile:$key",
+                                            factory = viewModelFactory {
+                                                initializer {
+                                                    ProfileViewModel(services, employer.apiBaseUrl, container.credentialVault, container.loginPrefs)
+                                                }
+                                            },
+                                        ),
                                     )
-                                    HomeScreen(
-                                        viewModel = home,
+                                    AppShell(
+                                        services = services,
+                                        viewModels = viewModels,
                                         employer = employer,
                                         user = signedIn.user,
                                         appVersion = BuildConfig.VERSION_NAME,

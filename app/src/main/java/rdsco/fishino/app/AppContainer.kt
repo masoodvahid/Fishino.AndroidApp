@@ -12,7 +12,8 @@ import rdsco.fishino.app.auth.SessionManager
 import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
-import rdsco.fishino.app.panel.PanelApi
+import rdsco.fishino.app.panel.PanelServices
+import rdsco.fishino.app.panel.SharedFiles
 import okhttp3.OkHttpClient
 import rdsco.fishino.app.update.ApkInstaller
 import rdsco.fishino.app.update.GitHubReleases
@@ -58,7 +59,10 @@ class AppContainer(context: Context) {
 
     fun authApi(apiBaseUrl: String) = AuthApi(apiClient(apiBaseUrl))
 
-    fun panelApi(apiBaseUrl: String) = PanelApi(apiClient(apiBaseUrl))
+    /** The signed-in screens' APIs for one employer. */
+    fun panelServices(apiBaseUrl: String) = PanelServices(apiClient(apiBaseUrl), sessionManager, sharedFiles)
+
+    val sharedFiles by lazy { SharedFiles(context.applicationContext) }
 
     val githubReleases = GitHubReleases(httpClient, BuildConfig.UPDATE_REPO, BuildConfig.UPDATE_ASSET_PATTERN, userAgent)
 

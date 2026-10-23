@@ -22,7 +22,7 @@ data class Profile(
 )
 
 /** Something the user must do on the web panel first (mobile number, password change, agreement). */
-data class Requirement(val key: String, val title: String, val message: String)
+data class Requirement(val key: String, val title: String, val message: String, val tab: String? = null)
 
 data class DocumentItem(
     val id: Long,
@@ -92,7 +92,7 @@ class PanelApi(private val http: ApiClient) {
 
         fun parseRequirement(data: JsonObject): Requirement? {
             val key = data.string("key") ?: return null
-            return Requirement(key, title = data.string("title").orEmpty(), message = data.string("message").orEmpty())
+            return Requirement(key, title = data.string("title").orEmpty(), message = data.string("message").orEmpty(), tab = data.string("tab"))
         }
 
         fun parseDocument(data: JsonObject): DocumentItem? {
@@ -117,13 +117,7 @@ class PanelApi(private val http: ApiClient) {
                 id = id,
                 trackingCode = data.string("tracking_code").orEmpty(),
                 title = data.string("title").orEmpty(),
-                status = when (status?.string("key")) {
-                    "needs-action" -> RequestStatus.NeedsAction
-                    "rejected" -> RequestStatus.Rejected
-                    "approved" -> RequestStatus.Approved
-                    "reviewing" -> RequestStatus.Reviewing
-                    else -> RequestStatus.Pending
-                },
+                status = requestStatus(status?.string("key")),
                 statusLabel = status?.string("label").orEmpty(),
                 comment = data.string("comment"),
                 updatedLabel = data.string("updated_label"),

@@ -14,6 +14,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -30,6 +32,10 @@ data class ApiError(
     val status: Int = 0,
     val captcha: Captcha? = null,
     val retryAfterSeconds: Long? = null,
+    /** Messages per form field (validation_failed). */
+    val fields: Map<String, String> = emptyMap(),
+    /** requirement_pending: the profile section ("mobile", "signature", …) where the user can do it. */
+    val requirementTab: String? = null,
 ) {
     companion object {
         const val NETWORK = "network"
@@ -65,6 +71,56 @@ class ApiClient(
     suspend fun <T> post(path: String, json: JsonObject, token: String?, parse: (JsonObject) -> T): ApiResult<T> =
         execute(Request.Builder().url(baseUrl + path).post(json.toString().toRequestBody(JSON)), token, parse)
 
+    suspend fun <T> delete(path: String, token: String?, parse: (JsonObject) -> T): ApiResult<T> =
+        execute(Request.Builder().url(baseUrl + path).delete(), token, parse)
+
+    /** A multipart upload: one file field plus optional text fields. */
+    suspend fun <T> upload(
+        path: String,
+        token: String?,
+        file: UploadPart,
+        parse: (JsonObject) -> T,
+    ): ApiResult<T> {
+        val body = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(file.field, file.fileName, file.bytes.toRequestBody(file.mimeType.toMediaTypeOrNull()))
+            .build()
+
+        return execute(Request.Builder().url(baseUrl + path).post(body), token, parse)
+    }
+
+    /**
+     * A file (image, PDF, attachment). Errors come back in the JSON format;
+     * files larger than [maxBytes] are refused.
+     */
+    suspend fun download(path: String, token: String?, maxBytes: Long = 30L * 1024 * 1024): ApiResult<Download> =
+        withContext(Dispatchers.IO) {
+            val builder = Request.Builder().url(baseUrl + path).get().header("User-Agent", userAgent)
+            token?.let { builder.header("Authorization", "Bearer $it") }
+
+            try {
+                client.newCall(builder.build()).execute().use { response ->
+                    val body = response.body ?: return@use ApiResult.Failed(ApiError(ApiError.SERVER_ERROR, status = response.code))
+                    val type = response.header("Content-Type").orEmpty()
+
+                    if (!response.isSuccessful || type.startsWith("application/json")) {
+                        return@use interpret(response.code, response.header("Retry-After"), body.string()) { Download(ByteArray(0), type, null) }
+                    }
+
+                    if (body.contentLength() > maxBytes) {
+                        return@use ApiResult.Failed(ApiError(FILE_TOO_LARGE, status = response.code))
+                    }
+
+                    val bytes = body.byteStream().use { stream -> readAtMost(stream, maxBytes) }
+                        ?: return@use ApiResult.Failed(ApiError(FILE_TOO_LARGE, status = response.code))
+
+                    ApiResult.Ok(Download(bytes, type.substringBefore(';').trim(), fileName(response.header("Content-Disposition"))))
+                }
+            } catch (e: IOException) {
+                ApiResult.Failed(ApiError(ApiError.NETWORK))
+            }
+        }
+
     private suspend fun <T> execute(builder: Request.Builder, token: String?, parse: (JsonObject) -> T): ApiResult<T> =
         withContext(Dispatchers.IO) {
             builder.header("Accept", "application/json").header("User-Agent", userAgent)
@@ -98,6 +154,10 @@ class ApiClient(
                     status = status,
                     captcha = error.obj("captcha")?.let(::parseCaptcha),
                     retryAfterSeconds = error.long("retry_after") ?: retryAfter,
+                    fields = error.obj("fields")?.let { fields ->
+                        fields.keys.mapNotNull { key -> fields.string(key)?.let { key to it } }.toMap()
+                    }.orEmpty(),
+                    requirementTab = error.obj("requirement")?.string("tab"),
                 ),
             )
         }
@@ -114,10 +174,40 @@ class ApiClient(
         return ApiResult.Failed(ApiError(code, status = status, retryAfterSeconds = retryAfter))
     }
 
-    private companion object {
-        val JSON = "application/json; charset=utf-8".toMediaType()
+    companion object {
+        const val FILE_TOO_LARGE = "file_too_large"
+        private val JSON = "application/json; charset=utf-8".toMediaType()
+
+        /** The whole stream, or null when it is longer than [maxBytes]. */
+        internal fun readAtMost(stream: java.io.InputStream, maxBytes: Long): ByteArray? {
+            val buffer = java.io.ByteArrayOutputStream()
+            val chunk = ByteArray(16 * 1024)
+            var total = 0L
+            while (true) {
+                val read = stream.read(chunk)
+                if (read < 0) break
+                total += read
+                if (total > maxBytes) return null
+                buffer.write(chunk, 0, read)
+            }
+            return buffer.toByteArray()
+        }
+
+        /** attachment; filename="a.pdf"; filename*=UTF-8''%D8%A2.pdf */
+        internal fun fileName(disposition: String?): String? {
+            if (disposition.isNullOrBlank()) return null
+            Regex("filename\\*=UTF-8''([^;]+)", RegexOption.IGNORE_CASE).find(disposition)?.let { match ->
+                return runCatching { java.net.URLDecoder.decode(match.groupValues[1], "UTF-8") }.getOrNull()
+            }
+            return Regex("filename=\"?([^\";]+)\"?", RegexOption.IGNORE_CASE).find(disposition)?.groupValues?.get(1)
+        }
     }
 }
+
+/** A file to upload: form [field], original [fileName] (its extension counts on the server). */
+class UploadPart(val field: String, val fileName: String, val mimeType: String, val bytes: ByteArray)
+
+class Download(val bytes: ByteArray, val contentType: String, val fileName: String?)
 
 internal fun parseCaptcha(data: JsonObject): Captcha? {
     val key = data.string("key") ?: return null
