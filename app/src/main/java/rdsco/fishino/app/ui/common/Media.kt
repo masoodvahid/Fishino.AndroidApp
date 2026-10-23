@@ -44,7 +44,16 @@ object ImageCache {
         override fun sizeOf(key: String, value: ImageBitmap): Int = value.width * value.height * 4
     }
 
+    /** Keys the server answered with "not found" (e.g. no profile photo yet). */
+    private val missing = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     operator fun get(key: String): ImageBitmap? = cache.get(key)
+
+    fun isMissing(key: String): Boolean = key in missing
+
+    fun markMissing(key: String) {
+        missing.add(key)
+    }
 
     fun put(key: String, image: ImageBitmap) {
         cache.put(key, image)
@@ -54,7 +63,10 @@ object ImageCache {
         cache.remove(key)
     }
 
-    fun clear() = cache.evictAll()
+    fun clear() {
+        cache.evictAll()
+        missing.clear()
+    }
 
     /** Decodes at most about [maxSide] pixels on the longer side. */
     fun decode(bytes: ByteArray, maxSide: Int = 1600): ImageBitmap? = runCatching {
@@ -84,8 +96,9 @@ fun AuthedImage(
     var image by remember(key) { mutableStateOf(ImageCache[key]) }
 
     LaunchedEffect(key) {
-        if (image != null) return@LaunchedEffect
+        if (image != null || ImageCache.isMissing(key)) return@LaunchedEffect
         val result = services.authed.call { token -> services.http.download(path, token, maxBytes = 10L * 1024 * 1024) }
+        if (result is ApiResult.Failed && result.error.status == 404) ImageCache.markMissing(key)
         if (result is ApiResult.Ok && result.value.contentType.startsWith("image/")) {
             withContext(Dispatchers.Default) { ImageCache.decode(result.value.bytes) }?.let {
                 ImageCache.put(key, it)
