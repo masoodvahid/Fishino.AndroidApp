@@ -41,14 +41,9 @@ fun text(value: UiText): String = when (value) {
 
 @Composable
 fun PanelCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier
-            .widthIn(max = ContentMaxWidth)
-            .fillMaxWidth()
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it },
+    GlassPanel(
+        modifier = modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
+        onClick = onClick,
     ) {
         Column(Modifier.padding(14.dp), content = content)
     }
@@ -111,7 +106,9 @@ fun SectionHeader(title: String, actionLabel: String? = null, onAction: (() -> U
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         if (actionLabel != null && onAction != null) {
-            TextButton(onClick = onAction) { Text(actionLabel) }
+            TextButton(onClick = onAction) {
+                Text(actionLabel, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

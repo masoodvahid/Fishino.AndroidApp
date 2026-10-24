@@ -1,7 +1,9 @@
 package rdsco.fishino.app.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -22,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
@@ -58,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -71,6 +75,7 @@ import rdsco.fishino.app.auth.AppUser
 import rdsco.fishino.app.employer.Employer
 import rdsco.fishino.app.panel.PanelServices
 import rdsco.fishino.app.ui.common.ImageCache
+import rdsco.fishino.app.ui.common.PageGradient
 import rdsco.fishino.app.ui.common.LocalPanel
 import rdsco.fishino.app.notify.MessageNotifier
 import rdsco.fishino.app.ui.documents.DocumentScreen
@@ -248,7 +253,12 @@ fun AppShell(
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                         )
 
-                        Spacer(Modifier.weight(1f))
+                        if (channels.isNotEmpty()) {
+                            Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.CenterEnd) {
+                                ChannelsButton(channels)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
                         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(R.string.home_version, appVersion),
@@ -265,9 +275,19 @@ fun AppShell(
             },
         ) {
             Scaffold(
+                modifier = Modifier.background(PageGradient),
                 topBar = {
-                    TopAppBar(
-                        title = { Text(if (current == Screen.Home) employer.name else title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    if (current == Screen.Home) {
+                        HomeHeader(
+                            name = home.data?.profile?.fullName?.takeIf { it.isNotBlank() } ?: user.fullName.ifBlank { user.username },
+                            unread = unread,
+                            onInbox = { openRoot(Screen.Inbox) },
+                            onMenu = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } },
+                            onLogout = { confirmLogout = true },
+                        )
+                    } else {
+                        TopAppBar(
+                        title = { Text(title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         navigationIcon = {
                             if (current.isRoot) {
                                 IconButton(onClick = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } }) {
@@ -280,22 +300,26 @@ fun AppShell(
                             }
                         },
                         actions = {
+                            IconButton(onClick = { openRoot(Screen.Inbox) }) {
+                                Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.inbox_title))
+                            }
                             IconButton(onClick = { confirmLogout = true }) {
                                 Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                     )
+                    }
                 },
                 floatingActionButton = {
-                    if (current.isRoot && channels.isNotEmpty()) ChannelsButton(channels)
+                    if (current != Screen.Home && current.isRoot && channels.isNotEmpty()) ChannelsButton(channels)
                 },
                 // Bottom left: the end side in right-to-left.
                 floatingActionButtonPosition = FabPosition.End,
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = Color.Transparent,
             ) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                    ScreenContent(current, viewModels, ::open, ::openSubmitted, ::openRoot)
+                    ScreenContent(current, viewModels, appVersion, ::open, ::openSubmitted, ::openRoot)
                 }
             }
         }
@@ -320,6 +344,7 @@ fun AppShell(
 private fun ScreenContent(
     screen: Screen,
     viewModels: ShellViewModels,
+    appVersion: String,
     open: (Screen) -> Unit,
     openSubmitted: (Long) -> Unit,
     openRoot: (Screen) -> Unit,
@@ -329,12 +354,15 @@ private fun ScreenContent(
     when (screen) {
         Screen.Home -> HomeScreen(
             viewModel = viewModels.home,
+            requestsViewModel = viewModels.requests,
+            appVersion = appVersion,
             actions = HomeActions(
                 openDocuments = { openRoot(Screen.Documents) },
                 openDocument = { open(Screen.DocumentDetail(it)) },
                 openRequests = { openRoot(Screen.Requests) },
                 openRequest = { open(Screen.RequestDetail(it)) },
                 newRequest = { open(Screen.Forms) },
+                openForm = { open(Screen.FormFill(it)) },
                 openNews = { openRoot(Screen.News) },
                 openNewsItem = { open(Screen.NewsDetail(it)) },
                 openProfileSection = openSection,

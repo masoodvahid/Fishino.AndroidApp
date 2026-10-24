@@ -14,19 +14,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import rdsco.fishino.app.R
 
-private val Brand = Color(0xFF0F6E8C)
+private val Brand = Color(0xFF292B30)
 
 private val FishinoColors = lightColorScheme(
     primary = Brand,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE3F1F5),
-    onPrimaryContainer = Color(0xFF06394A),
-    background = Color(0xFFF7F8FA),
-    onBackground = Color(0xFF1B1F24),
+    primaryContainer = Color(0xFFEBEDF0),
+    onPrimaryContainer = Color(0xFF292B30),
+    background = Color(0xFFF5F6F7),
+    onBackground = Color(0xFF202228),
     surface = Color.White,
-    onSurface = Color(0xFF1B1F24),
-    surfaceVariant = Color(0xFFF0F2F5),
-    onSurfaceVariant = Color(0xFF5B6470),
+    onSurface = Color(0xFF202228),
+    surfaceVariant = Color(0xFFEBEDF0),
+    onSurfaceVariant = Color(0xFF626975),
     outline = Color(0xFFC9CED6),
     outlineVariant = Color(0xFFE4E7EC),
     error = Color(0xFFB42318),
