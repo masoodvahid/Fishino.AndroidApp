@@ -43,8 +43,17 @@ class ApkInstaller(private val context: Context) {
         return ApkCheck.Ok
     }
 
-    /** Android 8+ asks the user once to allow this app to install updates. */
-    fun canInstall(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
+    /**
+     * Android 8+ asks the user once to allow this app to install updates.
+     * False when the build does not declare REQUEST_INSTALL_PACKAGES (store
+     * builds): Android then throws instead of answering.
+     */
+    fun canInstall(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+        try {
+            packageManager.canRequestPackageInstalls()
+        } catch (e: SecurityException) {
+            false
+        }
 
     fun permissionSettingsIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))

@@ -175,7 +175,10 @@ class MainActivity : FragmentActivity() {
                     }
                 }
 
-                UpdateDialog(updates, currentVersion = BuildConfig.VERSION_NAME)
+                // Builds without the GitHub updater (store builds) never show it.
+                if (updates.enabled) {
+                    UpdateDialog(updates, currentVersion = BuildConfig.VERSION_NAME)
+                }
             }
         }
     }
