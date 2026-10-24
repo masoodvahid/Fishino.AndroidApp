@@ -35,6 +35,7 @@ import rdsco.fishino.app.ui.login.LoginScreen
 import rdsco.fishino.app.ui.login.LoginViewModel
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
 import rdsco.fishino.app.ui.onboarding.EmployerCodeViewModel
+import rdsco.fishino.app.ui.privacy.PrivacyConsentScreen
 import rdsco.fishino.app.ui.theme.FishinoTheme
 import rdsco.fishino.app.ui.theme.ThemeMode
 import rdsco.fishino.app.ui.update.UpdateDialog
@@ -101,12 +102,21 @@ class MainActivity : FragmentActivity() {
                 )
                 LaunchedEffect(Unit) { updates.autoCheck() }
 
+                val privacyFlow = remember { container.privacyConsent.accepted.map<Boolean, Boolean?> { it } }
+                val privacyAccepted by privacyFlow.collectAsStateWithLifecycle(initialValue = null)
+
                 val employerFlow = remember { container.employerStore.employer.map<Employer?, EmployerState> { EmployerState.Ready(it) } }
                 val state by employerFlow.collectAsStateWithLifecycle(initialValue = EmployerState.Loading)
 
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                    when (val current = state) {
-                        EmployerState.Loading -> Unit
+                    when (val current = if (privacyAccepted == true) state else EmployerState.Loading) {
+                        EmployerState.Loading -> if (privacyAccepted == false) {
+                            // Before anything is sent: what the app receives and why (Bazaar's privacy rule).
+                            PrivacyConsentScreen(
+                                onAccept = { scope.launch { container.privacyConsent.accept() } },
+                                onDecline = { finish() },
+                            )
+                        }
                         is EmployerState.Ready -> {
                             val employer = current.employer
 

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import rdsco.fishino.app.ui.common.EmployerLogoImage
 import rdsco.fishino.app.ui.home.persianDigits
 import rdsco.fishino.app.ui.theme.ThemeMode
+import rdsco.fishino.app.ui.privacy.PrivacyScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -261,6 +263,14 @@ fun AppShell(
                             )
                         }
 
+                        NavigationDrawerItem(
+                            label = { Text(stringResource(R.string.menu_privacy)) },
+                            icon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                            selected = current == Screen.Privacy,
+                            onClick = { openRoot(Screen.Privacy) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                        )
+
                         Spacer(Modifier.height(8.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationDrawerItem(
@@ -424,6 +434,7 @@ private fun ScreenContent(
         Screen.Forms -> FormsScreen(viewModels.requests, onOpen = { open(Screen.FormFill(it)) }, onOpenProfileSection = openSection)
         is Screen.FormFill -> FormFillScreen(viewModels.requests, screen.id, onSubmitted = openSubmitted, onOpenProfileSection = openSection)
         is Screen.ProfileSection -> ProfileSectionScreen(viewModels.profile, screen.tab, openSection)
+        Screen.Privacy -> PrivacyScreen()
     }
 }
 
@@ -443,5 +454,6 @@ private fun title(screen: Screen): String = stringResource(
         Screen.Forms -> R.string.requests_new
         is Screen.FormFill -> R.string.requests_new
         is Screen.ProfileSection -> Section.of(screen.tab).title
+        Screen.Privacy -> R.string.menu_privacy
     },
 )

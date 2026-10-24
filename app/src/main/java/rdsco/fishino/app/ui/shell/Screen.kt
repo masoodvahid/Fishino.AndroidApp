@@ -55,6 +55,11 @@ sealed interface Screen {
         override val route = "requests/$id"
     }
 
+    /** The privacy notice, from the menu. */
+    data object Privacy : Screen {
+        override val route = "privacy"
+    }
+
     data object Forms : Screen {
         override val route = "forms"
     }
@@ -73,6 +78,7 @@ sealed interface Screen {
         fun parse(route: String): Screen? {
             roots.firstOrNull { it.route == route }?.let { return it }
             if (route == Forms.route) return Forms
+            if (route == Privacy.route) return Privacy
 
             val (head, tail) = route.split('/', limit = 2).let { it[0] to it.getOrNull(1) }
             tail ?: return null
