@@ -84,6 +84,20 @@ class AuthApiTest {
     }
 
     @Test
+    fun `config reads the logo version when the server has a logo`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"methods":{"password":true,"otp":false},"branding":{"logo_version":"1729760000"}}}"""))
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"methods":{"password":true,"otp":false},"branding":{"logo_version":null}}}"""))
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"methods":{"password":true,"otp":false}}}"""))
+            val api = AuthApi(OkHttpClient(), server.url("/api/v1").toString(), "t")
+
+            assertEquals("1729760000", (api.config() as ApiResult.Ok).value.logoVersion)
+            assertNull((api.config() as ApiResult.Ok).value.logoVersion)
+            assertNull((api.config() as ApiResult.Ok).value.logoVersion)
+        }
+    }
+
+    @Test
     fun `refresh sends the bearer token`() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setResponseCode(401).setBody("""{"message":"Unauthenticated."}"""))

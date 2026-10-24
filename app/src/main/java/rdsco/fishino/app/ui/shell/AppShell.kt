@@ -1,6 +1,18 @@
 package rdsco.fishino.app.ui.shell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import rdsco.fishino.app.ui.common.EmployerLogoImage
+import rdsco.fishino.app.ui.home.persianDigits
+import rdsco.fishino.app.ui.theme.ThemeMode
+import rdsco.fishino.app.ui.privacy.PrivacyScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -26,6 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
@@ -79,6 +92,7 @@ import rdsco.fishino.app.ui.common.PageGradient
 import rdsco.fishino.app.ui.common.LocalPanel
 import rdsco.fishino.app.notify.MessageNotifier
 import rdsco.fishino.app.ui.documents.DocumentScreen
+import rdsco.fishino.app.ui.documents.DocumentViewerScreen
 import rdsco.fishino.app.ui.documents.DocumentViewModel
 import rdsco.fishino.app.ui.home.Avatar
 import rdsco.fishino.app.ui.inbox.InboxScreen
@@ -123,8 +137,8 @@ private val menu = listOf(
 
 /**
  * The signed-in app: a top bar with the menu button and a side menu that
- * opens and closes with it (from the right, as the layout is right-to-left).
- * Inner screens show a back arrow instead.
+ * opens and closes with it, from the left where the menu button is (the
+ * rest of the layout stays right-to-left). Inner screens add a back arrow.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -132,10 +146,13 @@ fun AppShell(
     services: PanelServices,
     viewModels: ShellViewModels,
     employer: Employer,
+    employerLogo: ImageBitmap?,
     user: AppUser,
     appVersion: String,
     onCheckUpdates: (() -> Unit)?,
     onLogout: () -> Unit,
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
     /** A screen asked for from outside (a phone notification), and how to mark it handled. */
     pendingOpen: String?,
     onPendingOpenHandled: () -> Unit,
@@ -197,14 +214,20 @@ fun AppShell(
     BackHandler(enabled = drawer.isOpen) { scope.launch { drawer.close() } }
     BackHandler(enabled = !drawer.isOpen && stack.size > 1) { back() }
 
-    CompositionLocalProvider(LocalPanel provides services) {
+    // The drawer opens from the start side: left-to-right only for the drawer itself.
+    CompositionLocalProvider(LocalPanel provides services, LocalLayoutDirection provides LayoutDirection.Ltr) {
         ModalNavigationDrawer(
             drawerState = drawer,
             drawerContent = {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                 ModalDrawerSheet {
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        // Closes the menu: at the top, on the left (the end side in right-to-left).
-                        Row(Modifier.fillMaxWidth().statusBarsPadding().padding(top = 4.dp, end = 4.dp)) {
+                        // The employer's logo; the close button at the top left, by the screen edge.
+                        Row(
+                            Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, top = 8.dp, end = 4.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            EmployerLogoImage(employerLogo, contentDescription = employer.name, height = 52.dp, maxWidth = 180.dp)
                             Spacer(Modifier.weight(1f))
                             IconButton(onClick = { scope.launch { drawer.close() } }) {
                                 Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.menu_close))
@@ -240,6 +263,14 @@ fun AppShell(
                             )
                         }
 
+                        NavigationDrawerItem(
+                            label = { Text(stringResource(R.string.menu_privacy)) },
+                            icon = { Icon(Icons.Filled.Info, contentDescription = null) },
+                            selected = current == Screen.Privacy,
+                            onClick = { openRoot(Screen.Privacy) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                        )
+
                         Spacer(Modifier.height(8.dp))
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         NavigationDrawerItem(
@@ -258,28 +289,42 @@ fun AppShell(
                                 ChannelsButton(channels)
                             }
                         }
-                        Spacer(Modifier.height(12.dp))
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                stringResource(R.string.home_version, appVersion),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (onCheckUpdates != null) {
-                                TextButton(onClick = onCheckUpdates) { Text(stringResource(R.string.home_check_updates)) }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        ThemeChoice(themeMode, onThemeMode)
+                        Spacer(Modifier.height(8.dp))
+                        if (onCheckUpdates != null) {
+                            TextButton(onClick = onCheckUpdates, modifier = Modifier.padding(horizontal = 12.dp)) {
+                                Text(stringResource(R.string.home_check_updates))
                             }
+                        }
+                        // Fishino, small, at the foot of the menu.
+                        Row(
+                            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Image(painterResource(R.drawable.fishino_logo), contentDescription = null, modifier = Modifier.size(28.dp))
+                            Text(
+                                stringResource(R.string.menu_powered_by, appVersion).persianDigits(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 8.dp),
+                            )
                         }
                     }
                 }
+                }
             },
         ) {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
             Scaffold(
                 modifier = Modifier.background(PageGradient),
                 topBar = {
                     if (current == Screen.Home) {
                         HomeHeader(
                             name = home.data?.profile?.fullName?.takeIf { it.isNotBlank() } ?: user.fullName.ifBlank { user.username },
+                            employerName = employer.name,
+                            employerLogo = employerLogo,
                             unread = unread,
                             onInbox = { openRoot(Screen.Inbox) },
                             onMenu = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } },
@@ -289,22 +334,24 @@ fun AppShell(
                         TopAppBar(
                         title = { Text(title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         navigationIcon = {
-                            if (current.isRoot) {
-                                IconButton(onClick = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } }) {
-                                    Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.menu_open))
-                                }
-                            } else {
+                            if (!current.isRoot) {
                                 IconButton(onClick = ::back) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.list_back))
                                 }
                             }
                         },
+                        // As on the home screen: sign-out, messages, then the menu at the left edge.
                         actions = {
-                            IconButton(onClick = { openRoot(Screen.Inbox) }) {
-                                Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.inbox_title))
-                            }
                             IconButton(onClick = { confirmLogout = true }) {
                                 Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
+                            }
+                            IconButton(onClick = { openRoot(Screen.Inbox) }) {
+                                BadgedBox(badge = { if (unread > 0) Badge() }) {
+                                    Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.inbox_title))
+                                }
+                            }
+                            IconButton(onClick = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } }) {
+                                Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.menu_open))
                             }
                         },
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
@@ -319,8 +366,9 @@ fun AppShell(
                 containerColor = Color.Transparent,
             ) { padding ->
                 Column(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).imePadding()) {
-                    ScreenContent(current, viewModels, appVersion, ::open, ::openSubmitted, ::openRoot)
+                    ScreenContent(current, viewModels, employer.apiBaseUrl, appVersion, ::open, ::openSubmitted, ::openRoot)
                 }
+            }
             }
         }
     }
@@ -344,6 +392,7 @@ fun AppShell(
 private fun ScreenContent(
     screen: Screen,
     viewModels: ShellViewModels,
+    apiBaseUrl: String,
     appVersion: String,
     open: (Screen) -> Unit,
     openSubmitted: (Long) -> Unit,
@@ -375,7 +424,8 @@ private fun ScreenContent(
                 "report" -> open(Screen.DocumentDetail(link.id))
             }
         }
-        is Screen.DocumentDetail -> DocumentScreen(viewModels.document, screen.id, openSection)
+        is Screen.DocumentDetail -> DocumentScreen(viewModels.document, screen.id, onOpenView = { open(Screen.DocumentView(it)) }, onOpenProfileSection = openSection)
+        is Screen.DocumentView -> DocumentViewerScreen(viewModels.document, screen.id, apiBaseUrl, openSection)
         Screen.Requests -> RequestsScreen(viewModels.home, onNewRequest = { open(Screen.Forms) }, onOpen = { open(Screen.RequestDetail(it)) })
         Screen.News -> NewsListScreen(viewModels.news) { open(Screen.NewsDetail(it)) }
         Screen.Profile -> ProfileScreen(viewModels.profile, openSection)
@@ -384,6 +434,7 @@ private fun ScreenContent(
         Screen.Forms -> FormsScreen(viewModels.requests, onOpen = { open(Screen.FormFill(it)) }, onOpenProfileSection = openSection)
         is Screen.FormFill -> FormFillScreen(viewModels.requests, screen.id, onSubmitted = openSubmitted, onOpenProfileSection = openSection)
         is Screen.ProfileSection -> ProfileSectionScreen(viewModels.profile, screen.tab, openSection)
+        Screen.Privacy -> PrivacyScreen()
     }
 }
 
@@ -393,6 +444,7 @@ private fun title(screen: Screen): String = stringResource(
         Screen.Home -> R.string.app_name
         Screen.Inbox -> R.string.inbox_title
         is Screen.DocumentDetail -> R.string.document_title
+        is Screen.DocumentView -> R.string.document_title
         Screen.Documents -> R.string.list_documents_title
         Screen.Requests -> R.string.list_requests_title
         Screen.News -> R.string.menu_news
@@ -402,5 +454,6 @@ private fun title(screen: Screen): String = stringResource(
         Screen.Forms -> R.string.requests_new
         is Screen.FormFill -> R.string.requests_new
         is Screen.ProfileSection -> Section.of(screen.tab).title
+        Screen.Privacy -> R.string.menu_privacy
     },
 )

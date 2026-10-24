@@ -7,6 +7,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +35,9 @@ import rdsco.fishino.app.ui.login.LoginScreen
 import rdsco.fishino.app.ui.login.LoginViewModel
 import rdsco.fishino.app.ui.onboarding.EmployerCodeScreen
 import rdsco.fishino.app.ui.onboarding.EmployerCodeViewModel
+import rdsco.fishino.app.ui.privacy.PrivacyConsentScreen
 import rdsco.fishino.app.ui.theme.FishinoTheme
+import rdsco.fishino.app.ui.theme.ThemeMode
 import rdsco.fishino.app.ui.update.UpdateDialog
 import rdsco.fishino.app.ui.update.UpdateViewModel
 import kotlinx.coroutines.flow.map
@@ -62,15 +65,26 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Light UI only: dark system-bar icons on the light background.
-        val lightBars = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
-        enableEdgeToEdge(statusBarStyle = lightBars, navigationBarStyle = lightBars)
-
         val container = (application as FishinoApp).container
         takeOpenRequest(intent)
 
         setContent {
-            FishinoTheme {
+            val themeMode by container.themePrefs.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.System)
+            val systemDark = isSystemInDarkTheme()
+            val dark = when (themeMode) {
+                ThemeMode.System -> systemDark
+                ThemeMode.Light -> false
+                ThemeMode.Dark -> true
+            }
+            // System-bar icons follow the app's theme, not only the phone's.
+            LaunchedEffect(dark) {
+                val bars = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+            }
+            LaunchedEffect(Unit) { container.employerLogo.load() }
+            val employerLogo by container.employerLogo.image.collectAsStateWithLifecycle()
+
+            FishinoTheme(themeMode) {
                 val scope = rememberCoroutineScope()
                 val updates: UpdateViewModel = viewModel(
                     factory = viewModelFactory {
@@ -88,19 +102,28 @@ class MainActivity : FragmentActivity() {
                 )
                 LaunchedEffect(Unit) { updates.autoCheck() }
 
+                val privacyFlow = remember { container.privacyConsent.accepted.map<Boolean, Boolean?> { it } }
+                val privacyAccepted by privacyFlow.collectAsStateWithLifecycle(initialValue = null)
+
                 val employerFlow = remember { container.employerStore.employer.map<Employer?, EmployerState> { EmployerState.Ready(it) } }
                 val state by employerFlow.collectAsStateWithLifecycle(initialValue = EmployerState.Loading)
 
                 Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                    when (val current = state) {
-                        EmployerState.Loading -> Unit
+                    when (val current = if (privacyAccepted == true) state else EmployerState.Loading) {
+                        EmployerState.Loading -> if (privacyAccepted == false) {
+                            // Before anything is sent: what the app receives and why (Bazaar's privacy rule).
+                            PrivacyConsentScreen(
+                                onAccept = { scope.launch { container.privacyConsent.accept() } },
+                                onDecline = { finish() },
+                            )
+                        }
                         is EmployerState.Ready -> {
                             val employer = current.employer
 
                             if (employer == null) {
                                 val onboarding: EmployerCodeViewModel = viewModel(
                                     factory = viewModelFactory {
-                                        initializer { EmployerCodeViewModel(container.employerDirectory, container.employerStore) }
+                                        initializer { EmployerCodeViewModel(container.employerDirectory, container.employerStore, container.employerLogo) }
                                     },
                                 )
                                 EmployerCodeScreen(onboarding)
@@ -121,6 +144,7 @@ class MainActivity : FragmentActivity() {
                                                     prefs = container.loginPrefs,
                                                     vault = container.credentialVault,
                                                     messageSync = container.messageSync,
+                                                    logo = container.employerLogo,
                                                 )
                                             }
                                         },
@@ -134,6 +158,7 @@ class MainActivity : FragmentActivity() {
                                                 container.loginPrefs.forgetAccount()
                                                 runCatching { container.credentialVault.clearAll() }
                                                 container.messageSync.stop()
+                                                container.employerLogo.clear()
                                                 container.employerStore.clear()
                                             }
                                         },
@@ -162,10 +187,13 @@ class MainActivity : FragmentActivity() {
                                         services = services,
                                         viewModels = viewModels,
                                         employer = employer,
+                                        employerLogo = employerLogo,
                                         user = signedIn.user,
                                         appVersion = BuildConfig.VERSION_NAME,
                                         onCheckUpdates = if (updates.enabled) updates::checkNow else null,
                                         onLogout = container.sessionManager::signOut,
+                                        themeMode = themeMode,
+                                        onThemeMode = { mode -> scope.launch { container.themePrefs.set(mode) } },
                                         pendingOpen = pendingOpen,
                                         onPendingOpenHandled = { container.pendingOpen.value = null },
                                     )

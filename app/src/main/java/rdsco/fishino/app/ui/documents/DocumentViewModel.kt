@@ -25,6 +25,9 @@ class DocumentViewModel(private val services: PanelServices) : ViewModel() {
 
     val action = Action(viewModelScope, services.authed)
 
+    /** The page of the live view (no PDF is built for it). */
+    val page = Loader<Long, String>(viewModelScope, services.authed) { token, id -> services.documents.view(token, id) }
+
     private val _code = MutableStateFlow<PendingCode?>(null)
     val code: StateFlow<PendingCode?> = _code.asStateFlow()
 

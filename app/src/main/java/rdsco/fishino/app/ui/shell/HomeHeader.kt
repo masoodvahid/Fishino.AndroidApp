@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -31,21 +32,34 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import rdsco.fishino.app.R
+import rdsco.fishino.app.ui.common.EmployerLogoImage
+import rdsco.fishino.app.ui.theme.LocalDarkTheme
 
-/** RTL places the logo on the right; the actions are envelope, menu, then logout toward the left. */
+/**
+ * RTL places the employer's logo and name on the right; on the left, from
+ * the edge inward: the menu, the messages and, last, sign-out.
+ */
 @Composable
-fun HomeHeader(name: String, unread: Int, onInbox: () -> Unit, onMenu: () -> Unit, onLogout: () -> Unit) {
+fun HomeHeader(
+    name: String,
+    employerName: String,
+    employerLogo: ImageBitmap?,
+    unread: Int,
+    onInbox: () -> Unit,
+    onMenu: () -> Unit,
+    onLogout: () -> Unit,
+) {
     BoxWithConstraints(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
         if (maxWidth < 330.dp || LocalDensity.current.fontScale > 1.2f) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Brand(name)
+                Brand(name, employerName, employerLogo)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     HeaderActions(unread, onInbox, onMenu, onLogout)
                 }
             }
         } else {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f)) { Brand(name) }
+                Box(Modifier.weight(1f)) { Brand(name, employerName, employerLogo) }
                 HeaderActions(unread, onInbox, onMenu, onLogout)
             }
         }
@@ -53,12 +67,17 @@ fun HomeHeader(name: String, unread: Int, onInbox: () -> Unit, onMenu: () -> Uni
 }
 
 @Composable
-private fun Brand(name: String) {
+private fun Brand(name: String, employerName: String, employerLogo: ImageBitmap?) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Use the real raster wordmark, not an adaptive-icon mask or a replacement emblem.
-            Image(painterResource(R.drawable.fishino_logo), contentDescription = null, modifier = Modifier.size(36.dp))
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1)
+            EmployerLogoImage(employerLogo, contentDescription = null, height = 40.dp, maxWidth = 110.dp)
+            Text(
+                employerName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         Text(
             stringResource(R.string.home_welcome, name),
@@ -70,10 +89,19 @@ private fun Brand(name: String) {
     }
 }
 
+/** Sign-out first in code: in right-to-left it ends up innermost, the menu at the edge. */
 @Composable
-private fun HeaderActions(unread: Int, onInbox: () -> Unit, onMenu: () -> Unit, onLogout: () -> Unit) {
+fun HeaderActions(unread: Int, onInbox: () -> Unit, onMenu: () -> Unit, onLogout: () -> Unit) {
+    val dark = LocalDarkTheme.current
+    val rim = BorderStroke(1.dp, if (dark) Color.White.copy(alpha = .12f) else Color.White.copy(alpha = .8f))
+
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = CircleShape, color = Color(0xFFEAF4FF), border = BorderStroke(1.dp, Color.White.copy(alpha = .8f))) {
+        Surface(shape = CircleShape, color = if (dark) Color(0xFF3A1D1B) else Color(0xFFFFF1F1), border = rim) {
+            IconButton(onClick = onLogout, modifier = Modifier.size(48.dp)) {
+                Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
+            }
+        }
+        Surface(shape = CircleShape, color = if (dark) Color(0xFF1C2A3A) else Color(0xFFEAF4FF), border = rim) {
             IconButton(onClick = onInbox, modifier = Modifier.size(48.dp)) {
                 Box {
                     Image(
@@ -82,19 +110,14 @@ private fun HeaderActions(unread: Int, onInbox: () -> Unit, onMenu: () -> Unit, 
                         modifier = Modifier.size(24.dp),
                     )
                     if (unread > 0) {
-                        Box(Modifier.align(Alignment.TopEnd).size(7.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                        Box(Modifier.align(Alignment.TopEnd).size(8.dp).background(MaterialTheme.colorScheme.error, CircleShape))
                     }
                 }
             }
         }
-        Surface(shape = CircleShape, color = Color(0xFFF2EDFC), border = BorderStroke(1.dp, Color.White.copy(alpha = .8f))) {
+        Surface(shape = CircleShape, color = if (dark) Color(0xFF2A2638) else Color(0xFFF2EDFC), border = rim) {
             IconButton(onClick = onMenu, modifier = Modifier.size(48.dp)) {
-                Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.menu_open), tint = Color(0xFF283B60))
-            }
-        }
-        Surface(shape = CircleShape, color = Color(0xFFFFF1F1), border = BorderStroke(1.dp, Color(0xFFF8DFDF))) {
-            IconButton(onClick = onLogout, modifier = Modifier.size(48.dp)) {
-                Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
+                Icon(Icons.Filled.Menu, contentDescription = stringResource(R.string.menu_open), tint = if (dark) Color(0xFFD9DEEA) else Color(0xFF283B60))
             }
         }
     }

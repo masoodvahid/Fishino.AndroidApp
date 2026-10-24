@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import rdsco.fishino.app.R
+import rdsco.fishino.app.ui.theme.ThemeState
 import rdsco.fishino.app.panel.RequestStatus
 import rdsco.fishino.app.ui.login.UiText
 
@@ -51,12 +52,15 @@ fun PanelCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, cont
 
 class Tone(val background: Color, val content: Color)
 
+/** Status colors, light or dark with the app's theme. */
 object Tones {
-    val Warning = Tone(Color(0xFFFFF4E5), Color(0xFF8A4B00))
-    val Success = Tone(Color(0xFFE8F5EE), Color(0xFF1E7A46))
-    val Danger = Tone(Color(0xFFFDECEA), Color(0xFFB42318))
-    val Info = Tone(Color(0xFFE3F1F5), Color(0xFF06394A))
-    val Neutral = Tone(Color(0xFFF0F2F5), Color(0xFF5B6470))
+    private val dark get() = ThemeState.dark
+
+    val Warning get() = if (dark) Tone(Color(0xFF3A2A12), Color(0xFFFFC77A)) else Tone(Color(0xFFFFF4E5), Color(0xFF8A4B00))
+    val Success get() = if (dark) Tone(Color(0xFF14301F), Color(0xFF7FD6A2)) else Tone(Color(0xFFE8F5EE), Color(0xFF1E7A46))
+    val Danger get() = if (dark) Tone(Color(0xFF3A1714), Color(0xFFFF9C92)) else Tone(Color(0xFFFDECEA), Color(0xFFB42318))
+    val Info get() = if (dark) Tone(Color(0xFF102C35), Color(0xFF8FD3E8)) else Tone(Color(0xFFE3F1F5), Color(0xFF06394A))
+    val Neutral get() = if (dark) Tone(Color(0xFF262A30), Color(0xFFB7BEC8)) else Tone(Color(0xFFF0F2F5), Color(0xFF5B6470))
 }
 
 fun RequestStatus.tone(): Tone = when (this) {

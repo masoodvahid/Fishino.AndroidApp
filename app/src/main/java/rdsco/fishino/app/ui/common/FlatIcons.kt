@@ -14,6 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import rdsco.fishino.app.R
+import rdsco.fishino.app.ui.theme.LocalDarkTheme
 import rdsco.fishino.app.ui.home.RequestIllustration
 
 @Composable
@@ -23,7 +24,9 @@ fun FlatIcon(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
 ) {
-    Box(modifier.size(size).background(background, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+    // Pastel tiles would glare in dark mode: the same hue, faint.
+    val tile = if (LocalDarkTheme.current) background.copy(alpha = .16f) else background
+    Box(modifier.size(size).background(tile, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
         Image(painterResource(drawable), contentDescription = null, modifier = Modifier.size(size * .68f))
     }
 }

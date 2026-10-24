@@ -7,6 +7,10 @@ import rdsco.fishino.app.employer.EmployerCode
 import rdsco.fishino.app.employer.EmployerDirectory
 import rdsco.fishino.app.employer.EmployerStore
 import rdsco.fishino.app.employer.ResolveResult
+import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Job
+import rdsco.fishino.app.employer.EmployerLogo
+import rdsco.fishino.app.employer.LogoCandidate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +33,8 @@ data class EmployerCodeUiState(
     val error: CodeError? = null,
     /** Employer found for the code, waiting for the user's confirmation. */
     val candidate: Employer? = null,
+    /** The candidate's logo, when its server has one (it may arrive a moment later). */
+    val candidateLogo: ImageBitmap? = null,
     val saving: Boolean = false,
 )
 
@@ -40,7 +46,11 @@ data class EmployerCodeUiState(
 class EmployerCodeViewModel(
     private val directory: EmployerDirectory,
     private val store: EmployerStore,
+    private val logo: EmployerLogo,
 ) : ViewModel() {
+
+    private var logoCandidate: LogoCandidate? = null
+    private var logoJob: Job? = null
 
     private val _state = MutableStateFlow(EmployerCodeUiState())
     val state: StateFlow<EmployerCodeUiState> = _state.asStateFlow()
@@ -69,6 +79,18 @@ class EmployerCodeViewModel(
                     else -> it.copy(checking = false, error = result.toError())
                 }
             }
+            if (result is ResolveResult.Found) fetchLogo(result.employer)
+        }
+    }
+
+    private fun fetchLogo(employer: Employer) {
+        logoJob?.cancel()
+        logoCandidate = null
+        logoJob = viewModelScope.launch {
+            val fetched = logo.fetch(employer.apiBaseUrl) ?: return@launch
+            if (_state.value.candidate != employer) return@launch
+            logoCandidate = fetched
+            _state.update { it.copy(candidateLogo = fetched.image) }
         }
     }
 
@@ -79,6 +101,9 @@ class EmployerCodeViewModel(
         _state.update { it.copy(saving = true) }
 
         viewModelScope.launch {
+            logoJob?.cancel()
+            logo.keep(logoCandidate)
+            logoCandidate = null
             store.save(employer)
             // Fresh state in case the user changes employer later in this session.
             _state.value = EmployerCodeUiState()
@@ -86,6 +111,8 @@ class EmployerCodeViewModel(
     }
 
     fun reject() {
+        logoJob?.cancel()
+        logoCandidate = null
         _state.value = EmployerCodeUiState()
     }
 

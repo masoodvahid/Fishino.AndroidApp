@@ -10,6 +10,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import rdsco.fishino.app.auth.ApiClient
+import rdsco.fishino.app.auth.ApiError
 import rdsco.fishino.app.auth.ApiResult
 import rdsco.fishino.app.auth.UploadPart
 
@@ -172,6 +173,32 @@ class PanelFeaturesApiTest {
             assertEquals("اطلاعیه", home.latestNews.single().title)
             assertEquals(2, home.unreadNotifications)
             assertEquals(listOf("telegram", "phone"), home.channels.map { it.key })
+        }
+    }
+
+    @Test
+    fun `a document is read as a page and only html is accepted`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setHeader("Content-Type", "text/html; charset=UTF-8").setBody("<html><body>فیش حقوقی</body></html>"))
+            server.enqueue(MockResponse().setHeader("Content-Type", "application/pdf").setBody("%PDF"))
+            val api = DocumentApi(client(server))
+
+            assertEquals("<html><body>فیش حقوقی</body></html>", (api.view("t", 9) as ApiResult.Ok).value)
+            assertEquals("/api/v1/reports/9/view", server.takeRequest().path)
+            assertEquals(ApiError.UNSUPPORTED_SERVER, (api.view("t", 9) as ApiResult.Failed).error.code)
+        }
+    }
+
+    @Test
+    fun `the request pdf is offered only for approved requests`() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"id":1,"status":{"key":"pending"},"pdf_available":false}}"""))
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"id":2,"status":{"key":"approved"},"pdf_available":true}}"""))
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"id":3,"status":{"key":"approved"}}}"""))
+            server.enqueue(MockResponse().setBody("""{"ok":true,"data":{"id":4,"status":{"key":"reviewing"}}}"""))
+            val api = RequestApi(client(server))
+
+            assertEquals(listOf(false, true, true, false), (1L..4L).map { (api.detail("t", it) as ApiResult.Ok).value.pdfAvailable })
         }
     }
 

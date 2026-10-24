@@ -42,12 +42,22 @@ sealed interface Screen {
         override val route = "documents/$id"
     }
 
+    /** The document itself, shown in the app (no PDF download). */
+    data class DocumentView(val id: Long) : Screen {
+        override val route = "document-view/$id"
+    }
+
     data class NewsDetail(val id: Long) : Screen {
         override val route = "news/$id"
     }
 
     data class RequestDetail(val id: Long) : Screen {
         override val route = "requests/$id"
+    }
+
+    /** The privacy notice, from the menu. */
+    data object Privacy : Screen {
+        override val route = "privacy"
     }
 
     data object Forms : Screen {
@@ -68,6 +78,7 @@ sealed interface Screen {
         fun parse(route: String): Screen? {
             roots.firstOrNull { it.route == route }?.let { return it }
             if (route == Forms.route) return Forms
+            if (route == Privacy.route) return Privacy
 
             val (head, tail) = route.split('/', limit = 2).let { it[0] to it.getOrNull(1) }
             tail ?: return null
@@ -76,6 +87,7 @@ sealed interface Screen {
                 "news" -> tail.toLongOrNull()?.let(::NewsDetail)
                 "requests" -> tail.toLongOrNull()?.let(::RequestDetail)
                 "documents" -> tail.toLongOrNull()?.let(::DocumentDetail)
+                "document-view" -> tail.toLongOrNull()?.let(::DocumentView)
                 "forms" -> tail.toLongOrNull()?.let(::FormFill)
                 "profile" -> ProfileSection(tail)
                 else -> null

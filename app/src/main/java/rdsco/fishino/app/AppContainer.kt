@@ -11,12 +11,15 @@ import rdsco.fishino.app.auth.LoginPrefs
 import rdsco.fishino.app.auth.SessionManager
 import rdsco.fishino.app.employer.DirectoryTokenVerifier
 import rdsco.fishino.app.employer.EmployerDirectory
+import rdsco.fishino.app.employer.EmployerLogo
 import rdsco.fishino.app.employer.EmployerStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import rdsco.fishino.app.notify.MessageSync
 import rdsco.fishino.app.notify.SyncTokenStore
 import rdsco.fishino.app.panel.PanelServices
 import rdsco.fishino.app.panel.SharedFiles
+import rdsco.fishino.app.ui.theme.ThemePrefs
+import rdsco.fishino.app.ui.privacy.PrivacyConsent
 import okhttp3.OkHttpClient
 import rdsco.fishino.app.update.ApkInstaller
 import rdsco.fishino.app.update.GitHubReleases
@@ -64,6 +67,15 @@ class AppContainer(context: Context) {
 
     /** The signed-in screens' APIs for one employer. */
     fun panelServices(apiBaseUrl: String) = PanelServices(apiClient(apiBaseUrl), sessionManager, sharedFiles)
+
+    /** The privacy notice accepted at first run. */
+    val privacyConsent = PrivacyConsent(context)
+
+    /** Light, dark or as the phone. */
+    val themePrefs = ThemePrefs(context)
+
+    /** The employer's logo for the header and the menu. */
+    val employerLogo = EmployerLogo(context) { apiClient(it) }
 
     val sharedFiles by lazy { SharedFiles(context.applicationContext) }
 

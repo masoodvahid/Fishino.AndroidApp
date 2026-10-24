@@ -23,6 +23,7 @@ import rdsco.fishino.app.auth.OtpCode
 import rdsco.fishino.app.auth.Session
 import rdsco.fishino.app.auth.SessionEnd
 import rdsco.fishino.app.auth.SessionManager
+import rdsco.fishino.app.employer.EmployerLogo
 import rdsco.fishino.app.notify.MessageSync
 import javax.crypto.Cipher
 
@@ -35,6 +36,12 @@ sealed interface UiText {
 enum class OtpStep { EnterMobile, EnterCode }
 
 enum class BiometricPurpose { Login, Enroll }
+
+/**
+ * After a login with an SMS code: fingerprint sign-in needs the password
+ * once, so the offer asks for it (and checks it with the server).
+ */
+data class OtpEnrollment(val password: String = "", val busy: Boolean = false, val error: UiText? = null)
 
 /** The screen shows the biometric prompt for [cipher], once per [id]. */
 class BiometricRequest(val id: Int, val purpose: BiometricPurpose, val cipher: Cipher)
@@ -66,6 +73,8 @@ data class LoginUiState(
     val biometricRequest: BiometricRequest? = null,
     /** After a password login: "sign in with your fingerprint next time?" */
     val enrollmentOffer: Boolean = false,
+    /** After an SMS-code login: the same offer, asking for the password once. */
+    val otpEnrollment: OtpEnrollment? = null,
 ) {
     val canUseBiometric: Boolean get() = savedUsername != null && biometricAvailable && config?.passwordEnabled != false
 
@@ -84,6 +93,7 @@ class LoginViewModel(
     private val prefs: LoginPrefs,
     private val vault: CredentialVault,
     private val messageSync: MessageSync,
+    private val logo: EmployerLogo,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
 
@@ -94,6 +104,9 @@ class LoginViewModel(
     private class PendingEnrollment(val session: Session, val username: String, val password: String)
 
     private var pendingEnrollment: PendingEnrollment? = null
+
+    /** An SMS-code login waiting for the answer to the fingerprint offer. */
+    private var pendingOtpSession: Session? = null
     private var biometricRequestId = 0
 
     /**
@@ -153,6 +166,7 @@ class LoginViewModel(
                         )
                     }
                     maybeAutoPrompt()
+                    launch { logo.sync(apiBaseUrl, config.logoVersion) }
                 }
                 is ApiResult.Failed -> _state.update { it.copy(loadingConfig = false, configError = result.error.toUiText()) }
             }
@@ -317,7 +331,7 @@ class LoginViewModel(
     private fun maybeAutoPrompt() {
         val current = _state.value
         if (!autoPromptPending || current.config == null || !current.canUseBiometric) return
-        if (pendingEnrollment != null || sessions.session.value != null) return
+        if (pendingEnrollment != null || pendingOtpSession != null || sessions.session.value != null) return
 
         autoPromptPending = false
         loginWithFingerprint()
@@ -356,9 +370,69 @@ class LoginViewModel(
 
         submit(
             call = { deviceId -> api.verifyOtp(current.mobile, current.code, token, deviceId) },
-            onSuccess = { session -> signedIn(session) },
+            onSuccess = { session ->
+                val username = session.user.username
+                val offer = current.config?.passwordEnabled != false && username.isNotBlank() &&
+                    runCatching { vault.shouldOffer(apiBaseUrl, username) }.getOrDefault(false)
+
+                if (offer) {
+                    pendingOtpSession = session
+                    _state.update { it.copy(code = "", otpEnrollment = OtpEnrollment()) }
+                } else {
+                    signedIn(session)
+                }
+            },
             onFailure = { _ -> _state.update { it.copy(code = "") } },
         )
+    }
+
+    fun onEnrollmentPasswordChange(value: String) =
+        _state.update { state -> state.copy(otpEnrollment = state.otpEnrollment?.copy(password = value.take(255), error = null)) }
+
+    /**
+     * Checks the password with a normal login (the new session replaces the
+     * SMS one), then asks for the fingerprint to keep it.
+     */
+    fun confirmOtpEnrollment() {
+        val offer = _state.value.otpEnrollment ?: return
+        val otpSession = pendingOtpSession ?: return
+        if (offer.busy) return
+        if (offer.password.isEmpty()) {
+            _state.update { it.copy(otpEnrollment = offer.copy(error = UiText.Res(R.string.login_error_password))) }
+            return
+        }
+
+        _state.update { it.copy(otpEnrollment = offer.copy(busy = true, error = null)) }
+        viewModelScope.launch {
+            val username = otpSession.user.username
+            when (val result = api.login(username, offer.password, prefs.deviceId(), captcha = null)) {
+                is ApiResult.Ok -> {
+                    val session = result.value
+                    pendingOtpSession = null
+                    if (session.token != otpSession.token) launch { api.logout(otpSession.token) }
+                    pendingEnrollment = PendingEnrollment(session, username, offer.password)
+                    _state.update { it.copy(otpEnrollment = null) }
+                    val cipher = runCatching { vault.encryptionCipher() }.getOrNull() ?: return@launch finishEnrollment()
+                    _state.update { it.copy(biometricRequest = BiometricRequest(++biometricRequestId, BiometricPurpose.Enroll, cipher)) }
+                }
+                is ApiResult.Failed -> _state.update {
+                    it.copy(otpEnrollment = it.otpEnrollment?.copy(busy = false, password = "", error = result.error.toUiText()))
+                }
+            }
+        }
+    }
+
+    /** "Not now": the SMS login goes on; the offer is not repeated for this account. */
+    fun skipOtpEnrollment() {
+        val session = pendingOtpSession ?: return
+        if (_state.value.otpEnrollment?.busy == true) return
+        pendingOtpSession = null
+        _state.update { it.copy(otpEnrollment = null) }
+
+        viewModelScope.launch {
+            runCatching { vault.setDeclined(apiBaseUrl, session.user.username, declined = true) }
+            signedIn(session)
+        }
     }
 
     fun editMobile() {
