@@ -40,6 +40,7 @@ import rdsco.fishino.app.ui.home.persianDigits
 /** Shared, scrollable and keyboard-aware shell for both authentication steps. */
 @Composable
 fun AuthPage(step: Int, version: String = BuildConfig.VERSION_NAME, content: @Composable ColumnScope.() -> Unit) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
     Box(Modifier.fillMaxSize().background(PageGradient)) {
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
@@ -66,6 +67,7 @@ fun AuthPage(step: Int, version: String = BuildConfig.VERSION_NAME, content: @Co
                 )
             }
         }
+    }
     }
 }
 
