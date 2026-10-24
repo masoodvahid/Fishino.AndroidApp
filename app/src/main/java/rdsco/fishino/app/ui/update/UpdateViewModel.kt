@@ -147,10 +147,11 @@ class UpdateViewModel(
         return UpdateState.Failed(reason, release.takeIf { reason == UpdateFailure.Corrupt })
     }
 
-    fun canInstall(): Boolean = installer.canInstall()
+    fun canInstall(): Boolean = enabled && installer.canInstall()
 
     /** The installer when allowed, otherwise the settings page that allows it. */
     fun installIntent(): Intent? {
+        if (!enabled) return null
         val ready = _state.value as? UpdateState.ReadyToInstall ?: return null
         if (!ready.file.exists()) {
             _state.value = UpdateState.Failed(UpdateFailure.Corrupt, ready.release)

@@ -32,4 +32,12 @@ adb shell am force-stop "$package"
 adb shell am start -W -n "$package/rdsco.fishino.app.MainActivity" | tee "$out/restart.txt"
 sleep 5
 adb shell pidof "$package" >/dev/null
-echo "$label stayed alive across cold start and restart."
+adb shell uiautomator dump /sdcard/fishino-visible-ui.xml >/dev/null
+adb pull /sdcard/fishino-visible-ui.xml "$out/visible-ui.xml" >/dev/null
+python3 - "$out/visible-ui.xml" "$package" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+tree = ET.parse(sys.argv[1])
+assert any(node.get("package") == sys.argv[2] for node in tree.iter("node")), "App UI is not visible after launch"
+PY
+echo "$label stayed alive and rendered its UI across cold start and restart."
