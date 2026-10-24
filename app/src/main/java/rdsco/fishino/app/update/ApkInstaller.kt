@@ -44,7 +44,8 @@ class ApkInstaller(private val context: Context) {
     }
 
     /** Android 8+ asks the user once to allow this app to install updates. */
-    fun canInstall(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls()
+    fun canInstall(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+        checkInstallPermission { packageManager.canRequestPackageInstalls() }
 
     fun permissionSettingsIntent(): Intent =
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
@@ -81,4 +82,11 @@ class ApkInstaller(private val context: Context) {
 
         return signatures.orEmpty().filterNotNull().toSet()
     }
+}
+
+/** Android throws if REQUEST_INSTALL_PACKAGES is absent (as in store builds). */
+internal fun checkInstallPermission(check: () -> Boolean): Boolean = try {
+    check()
+} catch (_: SecurityException) {
+    false
 }

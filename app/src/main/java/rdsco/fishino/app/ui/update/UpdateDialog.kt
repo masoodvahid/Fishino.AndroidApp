@@ -40,12 +40,17 @@ import java.util.Locale
 
 @Composable
 fun UpdateDialog(viewModel: UpdateViewModel, currentVersion: String) {
+    // Store builds do not install APKs and must never query the install permission.
+    if (!viewModel.enabled) return
+
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     // Re-read the install permission whenever the user comes back from settings.
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val canInstall = remember(lifecycleState, state) { viewModel.canInstall() }
+    val canInstall = remember(lifecycleState, state) {
+        state is UpdateState.ReadyToInstall && viewModel.canInstall()
+    }
 
     val install: () -> Unit = { viewModel.installIntent()?.let { context.startSafely(it) } }
 
