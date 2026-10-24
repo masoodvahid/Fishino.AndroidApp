@@ -302,4 +302,22 @@
     <string name="privacy_accept">مطالعه کردم و می‌پذیرم</string>
     <string name="privacy_decline">نمی‌پذیرم (خروج)</string>
     <string name="menu_privacy">حریم خصوصی</string>
+    <string name="auth_brand_name">فیشی‌نو</string>
+    <string name="auth_tagline">همراه شما در امور پرسنلی</string>
+    <string name="auth_step_employer">انتخاب کارفرما</string>
+    <string name="auth_step_login">ورود به حساب</string>
+    <string name="auth_code_title">کد کارفرما را وارد کنید</string>
+    <string name="auth_code_description">کد ۶ رقمی دریافتی از واحد منابع انسانی شرکت را وارد کنید.</string>
+    <string name="auth_code_once">این کد را فقط یک‌بار وارد می‌کنید.</string>
+    <string name="auth_code_continue">بررسی کد و ادامه</string>
+    <string name="auth_code_confirm_hint">پس از بررسی کد، نام کارفرما برای تأیید نمایش داده می‌شود.</string>
+    <string name="auth_code_help_title">کد کارفرما را ندارید؟</string>
+    <string name="auth_code_help">از واحد منابع انسانی شرکت دریافت کنید.</string>
+    <string name="auth_selected_employer">کارفرمای انتخاب‌شده</string>
+    <string name="auth_login_title">ورود به حساب کاربری</string>
+    <string name="auth_login_description">برای مشاهده اسناد و پیگیری درخواست‌ها وارد شوید.</string>
+    <string name="auth_username_placeholder">نام کاربری خود را وارد کنید</string>
+    <string name="auth_account_notice">اطلاعات حساب خود را در اختیار دیگران قرار ندهید.</string>
+    <string name="auth_or">یا</string>
+    <string name="auth_login_button">ورود به حساب</string>
 </resources>

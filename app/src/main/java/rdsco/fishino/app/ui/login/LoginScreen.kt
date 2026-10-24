@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -29,6 +30,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
@@ -50,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -70,6 +74,10 @@ import kotlinx.coroutines.delay
 import rdsco.fishino.app.R
 import rdsco.fishino.app.auth.Captcha
 import rdsco.fishino.app.auth.LoginMethod
+import rdsco.fishino.app.ui.common.AuthPage
+import rdsco.fishino.app.ui.common.GlassPanel
+import rdsco.fishino.app.ui.common.FlatIcon
+import rdsco.fishino.app.ui.common.EmployerLogoImage
 
 @Composable
 fun LoginScreen(
@@ -77,6 +85,7 @@ fun LoginScreen(
     employerName: String,
     appVersion: String,
     onChangeEmployer: () -> Unit,
+    employerLogo: ImageBitmap? = null,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var confirmChangeEmployer by rememberSaveable { mutableStateOf(false) }
@@ -85,65 +94,44 @@ fun LoginScreen(
     SmsCodeListener(request = state.smsListenRequest, onMessage = viewModel::onSmsReceived)
     BiometricPromptEffect(request = state.biometricRequest, username = state.savedUsername, viewModel = viewModel)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 32.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        Column(
-            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(88.dp),
-            )
-            Text(stringResource(R.string.login_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(
-                employerName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(Modifier.height(20.dp))
-
-            state.notice?.let { notice ->
-                Notice(text(notice), onDismiss = viewModel::dismissNotice)
-                Spacer(Modifier.height(12.dp))
-            }
-
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    when {
-                        state.loadingConfig -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.5.dp)
-                        }
-
-                        state.config == null -> ConfigError(state.configError?.let { text(it) }, onRetry = viewModel::loadConfig)
-
-                        else -> LoginForm(state, now, viewModel)
-                    }
+    AuthPage(step = 2, version = appVersion) {
+        GlassPanel(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (employerLogo != null) {
+                    EmployerLogoImage(employerLogo, employerName, height = 44.dp, maxWidth = 64.dp)
+                } else {
+                    FlatIcon(R.drawable.ic_auth_employer)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.auth_selected_employer), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(employerName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+                TextButton(onClick = { confirmChangeEmployer = true }, enabled = !state.busy) {
+                    Text(stringResource(R.string.home_change_employer), style = MaterialTheme.typography.labelMedium)
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
-            TextButton(onClick = { confirmChangeEmployer = true }) { Text(stringResource(R.string.home_change_employer)) }
-            Text(
-                stringResource(R.string.home_version, appVersion),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        }
+        Spacer(Modifier.height(18.dp))
+        state.notice?.let { notice ->
+            Notice(text(notice), onDismiss = viewModel::dismissNotice)
+            Spacer(Modifier.height(12.dp))
+        }
+        GlassPanel(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(stringResource(R.string.auth_login_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.auth_login_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                when {
+                    state.loadingConfig -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.5.dp)
+                    }
+                    state.config == null -> ConfigError(state.configError?.let { text(it) }, onRetry = viewModel::loadConfig)
+                    else -> LoginForm(state, now, viewModel)
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 22.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            FlatIcon(R.drawable.ic_auth_lock, size = 28.dp)
+            Text(stringResource(R.string.auth_account_notice), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
         }
     }
 
@@ -174,6 +162,7 @@ fun LoginScreen(
                         value = offer.password,
                         onValueChange = viewModel::onEnrollmentPasswordChange,
                         label = { Text(stringResource(R.string.login_password)) },
+                        shape = RoundedCornerShape(22.dp),
                         singleLine = true,
                         enabled = !offer.busy,
                         isError = offer.error != null,
@@ -218,26 +207,17 @@ private fun LoginForm(state: LoginUiState, now: Long, viewModel: LoginViewModel)
     val config = state.config ?: return
     val lockedSeconds = ((state.lockedUntilMillis - now + 999) / 1000).coerceAtLeast(0)
 
-    if (state.canUseBiometric && config.passwordEnabled) {
-        OutlinedButton(
-            onClick = viewModel::loginWithFingerprint,
-            enabled = !state.busy && lockedSeconds == 0L,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) {
-            Text(stringResource(R.string.biometric_login_button, state.savedUsername.orEmpty()))
-        }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-    }
-
     if (config.otpEnabled && config.passwordEnabled) {
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp)) {
             listOf(LoginMethod.Password to R.string.login_method_password, LoginMethod.Otp to R.string.login_method_otp)
-                .forEachIndexed { index, (method, label) ->
+                .forEach { (method, label) ->
                     SegmentedButton(
                         selected = state.method == method,
                         onClick = { viewModel.selectMethod(method) },
-                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                        shape = RoundedCornerShape(24.dp),
+                        icon = {},
+                        border = BorderStroke(0.dp, Color.Transparent),
+                        colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.surface, inactiveContainerColor = Color.Transparent),
                         enabled = !state.busy,
                     ) { Text(stringResource(label), style = MaterialTheme.typography.labelLarge) }
                 }
@@ -266,16 +246,16 @@ private fun LoginForm(state: LoginUiState, now: Long, viewModel: LoginViewModel)
     }
 
     val (label, action) = when {
-        state.method == LoginMethod.Password -> R.string.login_submit to viewModel::loginWithPassword
+        state.method == LoginMethod.Password -> R.string.auth_login_button to viewModel::loginWithPassword
         state.otpStep == OtpStep.EnterMobile -> R.string.login_send_code to viewModel::sendOtp
-        else -> R.string.login_submit to viewModel::verifyOtp
+        else -> R.string.auth_login_button to viewModel::verifyOtp
     }
 
     Button(
         onClick = action,
         enabled = !state.busy && lockedSeconds == 0L,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(28.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
     ) {
         if (state.busy) {
             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
@@ -283,6 +263,20 @@ private fun LoginForm(state: LoginUiState, now: Long, viewModel: LoginViewModel)
             Text(stringResource(label))
         }
     }
+    if (state.canUseBiometric && config.passwordEnabled) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+            Text(stringResource(R.string.auth_or), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        }
+        OutlinedButton(onClick = viewModel::loginWithFingerprint, enabled = !state.busy && lockedSeconds == 0L,
+            shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            FlatIcon(R.drawable.ic_auth_fingerprint, background = Color(0xFFE0F6EB), size = 36.dp)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.biometric_login_button, state.savedUsername.orEmpty()), textAlign = TextAlign.Center)
+        }
+    }
+
 }
 
 @Composable
@@ -290,10 +284,13 @@ private fun PasswordForm(state: LoginUiState, viewModel: LoginViewModel) {
     val focus = LocalFocusManager.current
     var visible by rememberSaveable { mutableStateOf(false) }
 
+    Text(stringResource(R.string.login_username), style = MaterialTheme.typography.bodyMedium)
     OutlinedTextField(
         value = state.username,
         onValueChange = viewModel::onUsernameChange,
-        label = { Text(stringResource(R.string.login_username)) },
+        placeholder = { Text(stringResource(R.string.auth_username_placeholder), style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = { FlatIcon(R.drawable.ic_auth_person, size = 36.dp) },
+        shape = RoundedCornerShape(22.dp),
         singleLine = true,
         enabled = !state.busy,
         textStyle = ltr(),
@@ -302,17 +299,19 @@ private fun PasswordForm(state: LoginUiState, viewModel: LoginViewModel) {
         modifier = Modifier.fillMaxWidth(),
     )
 
+    Text(stringResource(R.string.login_password), style = MaterialTheme.typography.bodyMedium)
     OutlinedTextField(
         value = state.password,
         onValueChange = viewModel::onPasswordChange,
-        label = { Text(stringResource(R.string.login_password)) },
+        leadingIcon = { FlatIcon(R.drawable.ic_auth_lock, background = Color(0xFFEFE5FF), size = 36.dp) },
+        shape = RoundedCornerShape(22.dp),
         singleLine = true,
         enabled = !state.busy,
         textStyle = ltr(),
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         trailingIcon = {
-            TextButton(onClick = { visible = !visible }) {
-                Text(stringResource(if (visible) R.string.login_hide_password else R.string.login_show_password), style = MaterialTheme.typography.labelMedium)
+            IconButton(onClick = { visible = !visible }) {
+                Icon(painterResource(R.drawable.ic_auth_eye), contentDescription = stringResource(if (visible) R.string.login_hide_password else R.string.login_show_password), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
@@ -334,7 +333,8 @@ private fun OtpForm(state: LoginUiState, now: Long, viewModel: LoginViewModel) {
             onValueChange = viewModel::onMobileChange,
             label = { Text(stringResource(R.string.login_mobile)) },
             placeholder = { Text("09xxxxxxxxx", style = ltr()) },
-            singleLine = true,
+            shape = RoundedCornerShape(22.dp),
+        singleLine = true,
             enabled = !state.busy,
             textStyle = ltr(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Done),
@@ -352,6 +352,7 @@ private fun OtpForm(state: LoginUiState, now: Long, viewModel: LoginViewModel) {
         value = state.code,
         onValueChange = viewModel::onCodeChange,
         label = { Text(stringResource(R.string.login_code)) },
+        shape = RoundedCornerShape(22.dp),
         singleLine = true,
         enabled = !state.busy,
         textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center, letterSpacing = 8.sp, textDirection = TextDirection.Ltr),
@@ -401,6 +402,7 @@ private fun CaptchaField(captcha: Captcha, answer: String, enabled: Boolean, vie
         value = answer,
         onValueChange = viewModel::onCaptchaChange,
         label = { Text(stringResource(R.string.login_captcha)) },
+        shape = RoundedCornerShape(22.dp),
         singleLine = true,
         enabled = enabled,
         textStyle = ltr(),
@@ -412,7 +414,7 @@ private fun CaptchaField(captcha: Captcha, answer: String, enabled: Boolean, vie
 @Composable
 private fun ConfigError(message: String?, onRetry: () -> Unit) {
     Text(message ?: stringResource(R.string.error_server), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    Button(onClick = onRetry, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+    Button(onClick = onRetry, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.update_retry))
     }
 }
@@ -420,7 +422,7 @@ private fun ConfigError(message: String?, onRetry: () -> Unit) {
 @Composable
 private fun Notice(message: String, onDismiss: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
         modifier = Modifier.fillMaxWidth(),
     ) {

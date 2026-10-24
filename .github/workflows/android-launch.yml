@@ -107,6 +107,7 @@ jobs:
           script: |
             if [ -f previous.apk ]; then adb install -r previous.apk; fi
             bash scripts/check-startup.sh launch-apks/*.apk rdsco.fishino.app candidate
+            python3 scripts/check-auth-ui.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
