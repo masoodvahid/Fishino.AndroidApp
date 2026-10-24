@@ -1,0 +1,47 @@
+name: Android launch diagnosis
+
+on:
+  push:
+    branches: [fix/release-startup]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  published-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [24, 35]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download the reported APK and working baseline
+        run: |
+          mkdir -p launch-apks
+          curl -fL --retry 3 'https://github.com/masoodvahid/Fishino.AndroidApp/releases/download/v0.6.1/fishino-0.6.1.apk' -o launch-apks/release.apk
+          curl -fL --retry 3 'https://github.com/masoodvahid/Fishino.AndroidApp/releases/download/v0.5.0/fishino-test-0.5.0.apk' -o launch-apks/baseline.apk
+      - name: Enable hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch both published APKs
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            bash scripts/check-startup.sh launch-apks/baseline.apk rdsco.fishino.app.test baseline-0.5.0
+            bash scripts/check-startup.sh launch-apks/release.apk rdsco.fishino.app release-0.6.1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: launch-diagnosis-api-${{ matrix.api }}
+          path: launch-results/
+          retention-days: 7
