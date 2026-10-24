@@ -152,6 +152,7 @@ class MainActivity : FragmentActivity() {
                                     LoginScreen(
                                         viewModel = login,
                                         employerName = employer.name,
+                                        employerLogo = employerLogo,
                                         appVersion = BuildConfig.VERSION_NAME,
                                         onChangeEmployer = {
                                             scope.launch {

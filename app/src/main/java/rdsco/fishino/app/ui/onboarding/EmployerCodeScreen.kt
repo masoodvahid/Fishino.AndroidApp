@@ -1,102 +1,46 @@
 package rdsco.fishino.app.ui.onboarding
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rdsco.fishino.app.R
 import rdsco.fishino.app.employer.Employer
+import rdsco.fishino.app.ui.common.AuthPage
+import rdsco.fishino.app.ui.common.EmployerCodeInput
 import rdsco.fishino.app.ui.common.EmployerLogoMark
+import rdsco.fishino.app.ui.common.FlatIcon
+import rdsco.fishino.app.ui.common.GlassPanel
 
 @Composable
 fun EmployerCodeScreen(viewModel: EmployerCodeViewModel) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 56.dp),
-        contentAlignment = Alignment.TopCenter,
-    ) {
-        Column(
-            modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // The code step is Fishino's own; the confirm step shows the employer found.
-            if (state.candidate == null) {
-                Image(
-                    painter = painterResource(R.mipmap.ic_launcher_foreground),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.size(150.dp),
-                )
+    AuthPage(step = 1) {
+        GlassPanel(Modifier.fillMaxWidth()) {
+            val candidate = state.candidate
+            if (candidate == null) {
+                CodeForm(state, viewModel::onCodeChange, viewModel::submit)
             } else {
-                EmployerLogoMark(state.candidate!!.name, state.candidateLogo, Modifier.padding(vertical = 16.dp))
+                Column(Modifier.fillMaxWidth().padding(top = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    EmployerLogoMark(candidate.name, state.candidateLogo)
+                }
+                ConfirmEmployer(candidate, state.saving, viewModel::confirm, viewModel::reject)
             }
-            Spacer(Modifier.height(8.dp))
-
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val candidate = state.candidate
-
-                if (candidate == null) {
-                    CodeForm(
-                        state = state,
-                        onCodeChange = viewModel::onCodeChange,
-                        onSubmit = viewModel::submit,
-                    )
-                } else {
-                    ConfirmEmployer(
-                        employer = candidate,
-                        saving = state.saving,
-                        onConfirm = viewModel::confirm,
-                        onReject = viewModel::reject,
-                    )
+        }
+        if (state.candidate == null) {
+            Row(Modifier.fillMaxWidth().padding(top = 24.dp, start = 8.dp, end = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                FlatIcon(R.drawable.ic_auth_info)
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.auth_code_help_title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.auth_code_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -105,87 +49,39 @@ fun EmployerCodeScreen(viewModel: EmployerCodeViewModel) {
 
 @Composable
 private fun CodeForm(state: EmployerCodeUiState, onCodeChange: (String) -> Unit, onSubmit: () -> Unit) {
-    val error = state.error
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-
-    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.employer_code_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text(
-            stringResource(R.string.employer_code_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        OutlinedTextField(
-            value = state.code,
-            onValueChange = onCodeChange,
-            label = { Text(stringResource(R.string.employer_code_label)) },
-            singleLine = true,
-            enabled = !state.checking,
-            isError = error != null,
-            supportingText = if (error != null) {
-                { Text(errorMessage(error)) }
-            } else {
-                null
-            },
-            textStyle = MaterialTheme.typography.headlineSmall.copy(textAlign = TextAlign.Center, letterSpacing = 8.sp),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-        )
-
-        Button(
-            onClick = onSubmit,
-            enabled = state.code.length == 6 && !state.checking,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) {
+    val message = state.error?.let { errorMessage(it) }
+    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        FlatIcon(R.drawable.ic_auth_employer, size = 64.dp)
+        Text(stringResource(R.string.auth_code_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.auth_code_description), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.employer_code_title), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth())
+        EmployerCodeInput(state.code, onCodeChange, !state.checking, message, onSubmit)
+        if (message != null) {
+            Text(message, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error, modifier = Modifier.fillMaxWidth())
+        }
+        Text(stringResource(R.string.auth_code_once), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = onSubmit, enabled = state.code.length == 6 && !state.checking, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
             if (state.checking) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                CircularProgressIndicator(Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
             } else {
-                Text(stringResource(R.string.employer_code_submit))
+                Text(stringResource(R.string.auth_code_continue))
             }
         }
+        Text(stringResource(R.string.auth_code_confirm_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun ConfirmEmployer(employer: Employer, saving: Boolean, onConfirm: () -> Unit, onReject: () -> Unit) {
-    Column(
-        modifier = Modifier.padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            stringResource(R.string.employer_confirm_title),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            employer.name,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Text(
-            stringResource(R.string.employer_confirm_question),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(4.dp))
-        Button(
-            onClick = onConfirm,
-            enabled = !saving,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) {
-            Text(stringResource(R.string.employer_confirm_yes))
+    Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(stringResource(R.string.employer_confirm_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(employer.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.employer_confirm_question), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Button(onClick = onConfirm, enabled = !saving, shape = RoundedCornerShape(28.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            if (saving) CircularProgressIndicator(Modifier.size(22.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+            else Text(stringResource(R.string.employer_confirm_yes))
         }
-        TextButton(onClick = onReject, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.employer_confirm_no))
-        }
+        TextButton(onClick = onReject, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.employer_confirm_no)) }
     }
 }
 
