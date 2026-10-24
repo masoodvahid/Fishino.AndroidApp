@@ -5,7 +5,7 @@ name: Release smoke test
 # shrinker problems that unit tests and the debug/test builds cannot.
 on:
   push:
-    branches: [main, "smoke/**"]
+    branches: [main, "smoke/**", "fix/**"]
   workflow_dispatch:
 
 concurrency:
