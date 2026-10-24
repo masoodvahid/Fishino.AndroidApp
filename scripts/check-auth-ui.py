@@ -15,7 +15,9 @@ def adb(*args):
 
 def ui():
     adb('shell', 'uiautomator', 'dump', '/sdcard/auth-ui.xml')
-    return ET.fromstring(adb('shell', 'cat', '/sdcard/auth-ui.xml'))
+    xml = adb('shell', 'cat', '/sdcard/auth-ui.xml')
+    (OUT / 'latest-ui.xml').write_text(xml)
+    return ET.fromstring(xml)
 
 
 def find(tree, text):
@@ -26,6 +28,15 @@ def tap(node):
     x1, y1, x2, y2 = map(int, re.findall(r'\d+', node.get('bounds')))
     adb('shell', 'input', 'tap', str((x1 + x2) // 2), str((y1 + y2) // 2))
     time.sleep(1)
+
+
+def enabled(tree, node):
+    parents = {child: parent for parent in tree.iter() for child in parent}
+    while node is not None:
+        if node.get('enabled') == 'false':
+            return False
+        node = parents.get(node)
+    return True
 
 
 def screenshot(name):
@@ -61,15 +72,17 @@ tree = ui()
 editors = [n for n in tree.iter('node') if n.get('class') == 'android.widget.EditText']
 assert any(n.get('text') == '012345' for n in editors), 'Leading zero or digit ordering was lost'
 button = find(tree, 'بررسی کد و ادامه')
-assert button is not None and button.get('enabled') == 'true', 'Six digits should enable Continue'
+assert button is not None and enabled(tree, button), 'Six digits should enable Continue'
 screenshot('employer-filled.png')
-tap(editors[0])
-adb('shell', 'input', 'keyevent', 'KEYCODE_MOVE_END')
+# The editor retains focus after hiding the IME. A second Back could leave
+# the activity if tapping an already-focused editor did not reopen the IME.
 adb('shell', 'input', 'keyevent', 'KEYCODE_DEL')
-adb('shell', 'input', 'keyevent', 'KEYCODE_BACK')
 tree = ui()
+editors = [n for n in tree.iter('node') if n.get('class') == 'android.widget.EditText']
+assert any(n.get('text') == '01234' for n in editors), 'Backspace must remove the final digit'
 button = find(tree, 'بررسی کد و ادامه')
-assert button is not None and button.get('enabled') == 'false', 'Incomplete code must disable Continue'
+assert button is not None and not enabled(tree, button), 'Incomplete code must disable Continue'
+screenshot('employer-incomplete.png')
 adb('shell', 'cmd', 'uimode', 'night', 'yes')
 time.sleep(2)
 screenshot('employer-dark.png')
