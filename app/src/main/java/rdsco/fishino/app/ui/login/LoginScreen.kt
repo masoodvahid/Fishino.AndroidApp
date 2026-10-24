@@ -162,6 +162,40 @@ fun LoginScreen(
         )
     }
 
+    state.otpEnrollment?.let { offer ->
+        AlertDialog(
+            // A choice is needed: the login finishes after the answer.
+            onDismissRequest = {},
+            title = { Text(stringResource(R.string.biometric_offer_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(stringResource(R.string.biometric_offer_otp_text))
+                    OutlinedTextField(
+                        value = offer.password,
+                        onValueChange = viewModel::onEnrollmentPasswordChange,
+                        label = { Text(stringResource(R.string.login_password)) },
+                        singleLine = true,
+                        enabled = !offer.busy,
+                        isError = offer.error != null,
+                        supportingText = offer.error?.let { error -> { Text(text(error)) } },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { viewModel.confirmOtpEnrollment() }),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmOtpEnrollment, enabled = !offer.busy) {
+                    if (offer.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.biometric_offer_accept))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::skipOtpEnrollment, enabled = !offer.busy) { Text(stringResource(R.string.biometric_offer_decline)) }
+            },
+        )
+    }
+
     if (confirmChangeEmployer) {
         AlertDialog(
             onDismissRequest = { confirmChangeEmployer = false },

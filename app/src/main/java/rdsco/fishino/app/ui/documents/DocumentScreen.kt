@@ -54,9 +54,9 @@ import rdsco.fishino.app.ui.home.persianDigits
 import rdsco.fishino.app.ui.login.SmsCodeListener
 import rdsco.fishino.app.ui.requests.RequirementOrError
 
-/** A document: view it as PDF and, when asked, sign it. */
+/** A document: view it in the app or as PDF and, when asked, sign it. */
 @Composable
-fun DocumentScreen(viewModel: DocumentViewModel, id: Long, onOpenProfileSection: (String) -> Unit) {
+fun DocumentScreen(viewModel: DocumentViewModel, id: Long, onOpenView: (Long) -> Unit, onOpenProfileSection: (String) -> Unit) {
     LaunchedEffect(id) { viewModel.open(id) }
     val state by viewModel.detail.state.collectAsStateWithLifecycle()
     val action by viewModel.action.state.collectAsStateWithLifecycle()
@@ -87,16 +87,26 @@ fun DocumentScreen(viewModel: DocumentViewModel, id: Long, onOpenProfileSection:
                         document.signedLabel?.let {
                             Text(stringResource(R.string.document_signed_at, it).persianDigits(), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                         }
-                        Button(
+                        // Viewing in the app needs no PDF; the PDF stays for keeping or sharing.
+                        if (document.viewAvailable) {
+                            Button(
+                                onClick = { onOpenView(document.id) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.padding(top = 12.dp).fillMaxWidth().height(48.dp),
+                            ) {
+                                Text(stringResource(R.string.document_view_live))
+                            }
+                        }
+                        OutlinedButton(
                             onClick = { viewModel.openPdf(document.id, document.title) },
                             enabled = !pdfBusy,
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.padding(top = 12.dp).fillMaxWidth().height(48.dp),
+                            modifier = Modifier.padding(top = if (document.viewAvailable) 8.dp else 12.dp).fillMaxWidth().height(48.dp),
                         ) {
                             if (pdfBusy) {
-                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                             } else {
-                                Text(stringResource(R.string.document_view_pdf))
+                                Text(stringResource(if (document.viewAvailable) R.string.document_download_pdf else R.string.document_view_pdf))
                             }
                         }
                     }

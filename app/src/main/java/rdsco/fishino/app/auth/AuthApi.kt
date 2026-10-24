@@ -16,6 +16,8 @@ data class LoginConfig(
     val defaultMethod: LoginMethod,
     val otpLength: Int,
     val resendAfterSeconds: Int,
+    /** Changes when the employer uploads a new logo; null: no logo (or an older server). */
+    val logoVersion: String? = null,
 )
 
 enum class LoginMethod { Password, Otp }
@@ -38,6 +40,7 @@ class AuthApi(private val http: ApiClient) {
             defaultMethod = if (otpEnabled && data.string("default_method") == "otp") LoginMethod.Otp else LoginMethod.Password,
             otpLength = otp?.int("length") ?: 5,
             resendAfterSeconds = otp?.int("resend_after_seconds") ?: 120,
+            logoVersion = data.obj("branding")?.string("logo_version")?.takeIf { it.isNotBlank() },
         )
     }
 

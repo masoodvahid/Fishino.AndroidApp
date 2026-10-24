@@ -42,6 +42,11 @@ sealed interface Screen {
         override val route = "documents/$id"
     }
 
+    /** The document itself, shown in the app (no PDF download). */
+    data class DocumentView(val id: Long) : Screen {
+        override val route = "document-view/$id"
+    }
+
     data class NewsDetail(val id: Long) : Screen {
         override val route = "news/$id"
     }
@@ -76,6 +81,7 @@ sealed interface Screen {
                 "news" -> tail.toLongOrNull()?.let(::NewsDetail)
                 "requests" -> tail.toLongOrNull()?.let(::RequestDetail)
                 "documents" -> tail.toLongOrNull()?.let(::DocumentDetail)
+                "document-view" -> tail.toLongOrNull()?.let(::DocumentView)
                 "forms" -> tail.toLongOrNull()?.let(::FormFill)
                 "profile" -> ProfileSection(tail)
                 else -> null

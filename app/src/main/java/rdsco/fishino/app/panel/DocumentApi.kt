@@ -3,6 +3,7 @@ package rdsco.fishino.app.panel
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import rdsco.fishino.app.auth.ApiClient
+import rdsco.fishino.app.auth.ApiError
 import rdsco.fishino.app.auth.ApiResult
 import rdsco.fishino.app.auth.bool
 import rdsco.fishino.app.auth.int
@@ -23,6 +24,8 @@ data class DocumentDetail(
     val signedLabel: String?,
     val maskedMobile: String,
     val requirements: List<SigningRequirement>,
+    /** The server can show the document as a page (no PDF needed). */
+    val viewAvailable: Boolean = false,
 ) {
     val readyToSign: Boolean get() = canSign && !signed && requirements.isNotEmpty() && requirements.all { it.complete }
 }
@@ -50,8 +53,20 @@ class DocumentApi(private val http: ApiClient) {
                     tab = item.string("tab"),
                 )
             },
+            viewAvailable = data.bool("view_available") == true,
         )
     }
+
+    /** The document as the web panel shows it: an HTML page without script. */
+    suspend fun view(token: String, id: Long): ApiResult<String> =
+        when (val result = http.download(viewPath(id), token, maxBytes = 5L * 1024 * 1024)) {
+            is ApiResult.Ok -> if (result.value.contentType.startsWith("text/html")) {
+                ApiResult.Ok(result.value.bytes.toString(Charsets.UTF_8))
+            } else {
+                ApiResult.Failed(ApiError(ApiError.UNSUPPORTED_SERVER))
+            }
+            is ApiResult.Failed -> result
+        }
 
     suspend fun sendCode(token: String, id: Long): ApiResult<CodeSent> = http.post("/reports/$id/sign/send", buildJsonObject {}, token) { data ->
         CodeSent(
@@ -66,5 +81,7 @@ class DocumentApi(private val http: ApiClient) {
 
     companion object {
         fun pdfPath(id: Long) = "/reports/$id/pdf"
+
+        fun viewPath(id: Long) = "/reports/$id/view"
     }
 }

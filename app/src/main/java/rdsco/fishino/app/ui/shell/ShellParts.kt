@@ -23,6 +23,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Badge
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -47,6 +51,7 @@ import androidx.core.content.ContextCompat
 import rdsco.fishino.app.R
 import rdsco.fishino.app.panel.Channel
 import rdsco.fishino.app.ui.home.persianDigits
+import rdsco.fishino.app.ui.theme.ThemeMode
 
 /** The sign-out button in the top bar. */
 val SignOutRed = Color(0xFFD92D20)
@@ -125,6 +130,33 @@ fun NotificationPermission() {
         asked = true
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             runCatching { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+        }
+    }
+}
+
+/** Light, dark or as the phone: three buttons in the menu. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ThemeChoice(mode: ThemeMode, onChange: (ThemeMode) -> Unit) {
+    val options = listOf(
+        ThemeMode.System to R.string.theme_system,
+        ThemeMode.Light to R.string.theme_light,
+        ThemeMode.Dark to R.string.theme_dark,
+    )
+
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.theme_title), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (option, label) ->
+                SegmentedButton(
+                    selected = mode == option,
+                    onClick = { onChange(option) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    icon = {},
+                ) {
+                    Text(stringResource(label), style = MaterialTheme.typography.labelMedium)
+                }
+            }
         }
     }
 }

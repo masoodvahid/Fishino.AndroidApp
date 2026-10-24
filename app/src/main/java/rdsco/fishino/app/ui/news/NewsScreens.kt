@@ -55,32 +55,7 @@ import rdsco.fishino.app.ui.home.persianDigits
 
 @Composable
 fun NewsListScreen(viewModel: NewsViewModel, onOpen: (Long) -> Unit) {
-    PagedListContent(viewModel.list, stringResource(R.string.news_empty)) { item -> NewsCard(item) { onOpen(item.id) } }
-}
-
-@Composable
-private fun NewsCard(item: NewsItem, onClick: () -> Unit) {
-    PanelCard(onClick = onClick) {
-        if (item.hasImage) {
-            AuthedImage(
-                path = NewsApi.imagePath(item.id),
-                contentDescription = null,
-                modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)),
-            )
-        }
-        Meta(item, Modifier.padding(top = if (item.hasImage) 10.dp else 0.dp))
-        Text(item.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
-        if (item.summary.isNotBlank()) {
-            Text(
-                item.summary,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    }
+    PagedListContent(viewModel.list, stringResource(R.string.news_empty)) { item -> NewsImageCard(item, onClick = { onOpen(item.id) }) }
 }
 
 @Composable

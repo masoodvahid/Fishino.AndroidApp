@@ -2,7 +2,7 @@ name: Android launch
 
 on:
   push:
-    branches: [main, fix/release-startup]
+    branches: [main, fix/release-startup, "feature/**"]
   pull_request:
   workflow_dispatch:
 

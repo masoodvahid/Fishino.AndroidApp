@@ -49,6 +49,8 @@ data class RequestDetail(
     val statusLabel: String,
     val contentHtml: String,
     val reviews: List<Review>,
+    /** The PDF letter is built only once the request is approved. */
+    val pdfAvailable: Boolean = false,
 )
 
 /** Request forms, submitting one, and a request's details (/forms, /requests/{id}). */
@@ -102,6 +104,8 @@ class RequestApi(private val http: ApiClient) {
             status = requestStatus(status?.string("key")),
             statusLabel = status?.string("label").orEmpty(),
             contentHtml = data.string("content_html").orEmpty(),
+            // Older servers do not say: the same rule as newer ones.
+            pdfAvailable = data.bool("pdf_available") ?: (requestStatus(status?.string("key")) == RequestStatus.Approved),
             reviews = data.objects("reviews").map { review ->
                 val reviewStatus = review.obj("status")
                 Review(

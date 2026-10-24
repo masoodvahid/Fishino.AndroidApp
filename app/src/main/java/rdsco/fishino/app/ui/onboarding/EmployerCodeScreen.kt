@@ -1,6 +1,7 @@
 package rdsco.fishino.app.ui.onboarding
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import rdsco.fishino.app.R
 import rdsco.fishino.app.employer.Employer
+import rdsco.fishino.app.ui.common.EmployerLogoMark
 
 @Composable
 fun EmployerCodeScreen(viewModel: EmployerCodeViewModel) {
@@ -61,13 +64,17 @@ fun EmployerCodeScreen(viewModel: EmployerCodeViewModel) {
             modifier = Modifier.widthIn(max = 420.dp).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(24.dp))
+            // The code step is Fishino's own; the confirm step shows the employer found.
+            if (state.candidate == null) {
+                Image(
+                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.size(150.dp),
+                )
+            } else {
+                EmployerLogoMark(state.candidate!!.name, state.candidateLogo, Modifier.padding(vertical = 16.dp))
+            }
+            Spacer(Modifier.height(8.dp))
 
             Surface(
                 shape = RoundedCornerShape(16.dp),

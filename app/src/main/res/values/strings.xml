@@ -272,4 +272,13 @@
     <string name="action_ok">باشه</string>
     <string name="action_confirm">تأیید</string>
     <string name="action_cancel">انصراف</string>
+    <string name="menu_powered_by">فیشی‌نو · نسخه %1$s</string>
+    <string name="theme_title">حالت نمایش</string>
+    <string name="theme_system">خودکار</string>
+    <string name="theme_light">روشن</string>
+    <string name="theme_dark">تاریک</string>
+    <string name="biometric_offer_otp_text">دفعه‌های بعد با اثر انگشت وارد شوید؟ برای فعال شدن، یک بار رمز عبور خود را وارد کنید. رمز به‌صورت رمزگذاری‌شده فقط روی همین گوشی نگه داشته می‌شود و بدون اثر انگشت شما قابل استفاده نیست.</string>
+    <string name="document_view_live">مشاهده سند</string>
+    <string name="document_download_pdf">دریافت فایل PDF</string>
+    <string name="requests_pdf_after_approval">فایل PDF این درخواست پس از تایید آماده می‌شود.</string>
 </resources>

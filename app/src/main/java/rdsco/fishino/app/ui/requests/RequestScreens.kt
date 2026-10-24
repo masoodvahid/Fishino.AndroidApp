@@ -362,12 +362,17 @@ private fun androidx.compose.foundation.lazy.LazyListScope.requestDetail(
         }
     }
 
+    // The letter is built on the server only for approved requests.
     item {
         Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            OutlinedButton(onClick = onPdf, enabled = !pdfBusy, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                if (pdfBusy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.requests_pdf))
+            if (detail.pdfAvailable) {
+                OutlinedButton(onClick = onPdf, enabled = !pdfBusy, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                    if (pdfBusy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text(stringResource(R.string.requests_pdf))
+                }
+                ErrorText(pdfError)
+            } else {
+                EmptyText(stringResource(R.string.requests_pdf_after_approval))
             }
-            ErrorText(pdfError)
         }
     }
 }
