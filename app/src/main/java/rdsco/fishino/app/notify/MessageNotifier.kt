@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -20,7 +22,9 @@ import rdsco.fishino.app.R
  */
 object MessageNotifier {
 
-    const val CHANNEL_ID = "messages"
+    /** A new id for the message tone: Android keeps a channel's sound as it was first made. */
+    const val CHANNEL_ID = "messages_tone"
+    private const val OLD_CHANNEL_ID = "messages"
     const val EXTRA_OPEN = "rdsco.fishino.app.OPEN"
     const val OPEN_INBOX = "inbox"
 
@@ -28,9 +32,15 @@ object MessageNotifier {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.notify_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
             description = context.getString(R.string.notify_channel_description)
+            setSound(tone(context), AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
         }
-        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+        context.getSystemService(NotificationManager::class.java)?.run {
+            deleteNotificationChannel(OLD_CHANNEL_ID)
+            createNotificationChannel(channel)
+        }
     }
+
+    private fun tone(context: Context): Uri = Uri.parse("android.resource://${context.packageName}/${R.raw.message_tone}")
 
     fun canNotify(context: Context): Boolean =
         (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -47,7 +57,7 @@ object MessageNotifier {
         val pending = PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val manager = NotificationManagerCompat.from(context)
 
-        messages.forEach { (id, title) ->
+        messages.forEachIndexed { index, (id, title) ->
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(title)
@@ -56,6 +66,9 @@ object MessageNotifier {
                 .setAutoCancel(true)
                 .setGroup(GROUP)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                // Before Android 8 (later the channel's); one tone for several messages at once.
+                .setSound(tone(context))
+                .setSilent(index > 0)
                 .build()
 
             try {

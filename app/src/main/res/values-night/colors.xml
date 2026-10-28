@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Window color before Compose draws, when the phone is in dark mode. -->
-    <color name="background">#FF121316</color>
-</resources>

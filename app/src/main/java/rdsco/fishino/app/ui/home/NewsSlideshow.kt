@@ -17,21 +17,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import rdsco.fishino.app.R
 import rdsco.fishino.app.panel.NewsItem
 import rdsco.fishino.app.ui.common.ContentMaxWidth
-import rdsco.fishino.app.ui.common.SectionHeader
 import rdsco.fishino.app.ui.news.NewsImageCard
 
 /**
  * The latest announcements as picture cards that turn by themselves; a
- * tap on a card opens it, the header's link opens the full list.
+ * tap on a card opens it. The full list is in the menu.
  */
 @Composable
-fun NewsSlideshow(items: List<NewsItem>, onOpen: (Long) -> Unit, onOpenAll: () -> Unit) {
+fun NewsSlideshow(items: List<NewsItem>, onOpen: (Long) -> Unit) {
     if (items.isEmpty()) return
     val pager = rememberPagerState { items.size }
     LaunchedEffect(items.map { it.id }) {
@@ -44,8 +41,7 @@ fun NewsSlideshow(items: List<NewsItem>, onOpen: (Long) -> Unit, onOpenAll: () -
         }
     }
 
-    Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeader(stringResource(R.string.menu_news), stringResource(R.string.home_see_all), onOpenAll)
+    Column(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth()) {
         HorizontalPager(
             state = pager,
             pageSpacing = 12.dp,
