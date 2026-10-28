@@ -68,7 +68,6 @@ class HomeActions(
     val openRequest: (Long) -> Unit,
     val newRequest: () -> Unit,
     val openForm: (Long) -> Unit,
-    val openNews: () -> Unit,
     val openNewsItem: (Long) -> Unit,
     val openProfileSection: (String) -> Unit,
 )
@@ -103,7 +102,7 @@ fun HomeScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -137,7 +136,7 @@ private fun LazyListScope.homeSections(
     // No invented sample announcement if the employer has not published any news.
     if (data.latestNews.isNotEmpty()) {
         item("news") {
-            NewsSlideshow(data.latestNews.take(3), onOpen = actions.openNewsItem, onOpenAll = actions.openNews)
+            NewsSlideshow(data.latestNews.take(3), onOpen = actions.openNewsItem)
         }
     }
     data.requirement?.let { requirement ->

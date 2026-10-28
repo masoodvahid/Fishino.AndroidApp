@@ -6,14 +6,18 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.annotation.DrawableRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -51,15 +56,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,7 +87,9 @@ import rdsco.fishino.app.ui.common.Chip
 import rdsco.fishino.app.ui.common.ContentMaxWidth
 import rdsco.fishino.app.ui.common.EmptyText
 import rdsco.fishino.app.ui.common.ErrorText
+import rdsco.fishino.app.ui.common.FlatIcon
 import rdsco.fishino.app.ui.common.HtmlText
+import rdsco.fishino.app.ui.common.GlassPanel
 import rdsco.fishino.app.ui.common.LoadError
 import rdsco.fishino.app.ui.common.Loading
 import rdsco.fishino.app.ui.common.PanelCard
@@ -90,17 +101,17 @@ import rdsco.fishino.app.ui.home.persianDigits
 import rdsco.fishino.app.ui.login.SmsCodeListener
 import rdsco.fishino.app.ui.login.UiText
 
-/** The profile's sections, in the web's order, with their titles. */
-enum class ProfileSection(val tab: String, val title: Int, val description: Int) {
-    Password("password", R.string.profile_password, R.string.profile_password_desc),
-    Mobile("mobile", R.string.profile_mobile, R.string.profile_mobile_desc),
-    Signature("signature", R.string.profile_signature, R.string.profile_signature_desc),
-    Avatar("avatar", R.string.profile_avatar, R.string.profile_avatar_desc),
-    Documents("documents", R.string.profile_documents, R.string.profile_documents_desc),
-    Information("profile", R.string.profile_information, R.string.profile_information_desc),
-    Bale("bale", R.string.profile_bale, R.string.profile_bale_desc),
-    Agreement("agreement", R.string.profile_agreement, R.string.profile_agreement_desc),
-    Logs("logs", R.string.profile_logs, R.string.profile_logs_desc),
+/** The profile's sections, in the web's order, with their titles and icons. */
+enum class ProfileSection(val tab: String, val title: Int, val description: Int, @DrawableRes val icon: Int, val tile: Color) {
+    Password("password", R.string.profile_password, R.string.profile_password_desc, R.drawable.ic_auth_lock, Color(0xFFEFE5FF)),
+    Mobile("mobile", R.string.profile_mobile, R.string.profile_mobile_desc, R.drawable.ic_flat_phone, Color(0xFFE0F5FA)),
+    Signature("signature", R.string.profile_signature, R.string.profile_signature_desc, R.drawable.ic_flat_signature, Color(0xFFFFF0E0)),
+    Avatar("avatar", R.string.profile_avatar, R.string.profile_avatar_desc, R.drawable.ic_auth_person, Color(0xFFE5F1FF)),
+    Documents("documents", R.string.profile_documents, R.string.profile_documents_desc, R.drawable.ic_flat_document, Color(0xFFE5F1FF)),
+    Information("profile", R.string.profile_information, R.string.profile_information_desc, R.drawable.ic_flat_idcard, Color(0xFFE9EAFE)),
+    Bale("bale", R.string.profile_bale, R.string.profile_bale_desc, R.drawable.ic_flat_chat, Color(0xFFE0F6EB)),
+    Agreement("agreement", R.string.profile_agreement, R.string.profile_agreement_desc, R.drawable.ic_flat_certificate, Color(0xFFFFF5D9)),
+    Logs("logs", R.string.profile_logs, R.string.profile_logs_desc, R.drawable.ic_flat_history, Color(0xFFFDE7EB)),
     ;
 
     companion object {
@@ -149,22 +160,51 @@ fun ProfileScreen(viewModel: ProfileViewModel, onOpenSection: (String) -> Unit) 
                     )
                 }
 
-                items(ProfileSection.entries) { section ->
-                    PanelCard(onClick = { onOpenSection(section.tab) }) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(stringResource(section.title), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                                Text(stringResource(section.description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            if (data.pending.any { it.tab == section.tab }) {
-                                Chip(stringResource(R.string.profile_needs_action), Tones.Warning, Modifier.padding(start = 8.dp))
-                            }
+                // Bale only once the employer has set up its bot (or the account is still connected).
+                val sections = ProfileSection.entries.filter { it != ProfileSection.Bale || data.bale.available || data.bale.connected }
+                items(sections.chunked(3)) { row ->
+                    Row(Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { section ->
+                            SectionTile(section, needsAction = data.pending.any { it.tab == section.tab }, Modifier.weight(1f)) { onOpenSection(section.tab) }
                         }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
             state.loading -> item { Loading() }
             else -> item { LoadError(state.error, onRetry = viewModel::refresh) }
+        }
+    }
+}
+
+/** A profile section in the overview's grid: its icon, its title below. */
+@Composable
+private fun SectionTile(section: ProfileSection, needsAction: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val pendingLabel = stringResource(R.string.profile_needs_action)
+    GlassPanel(modifier, onClick = onClick) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 112.dp).padding(horizontal = 6.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+        ) {
+            Box {
+                FlatIcon(section.icon, section.tile, size = 48.dp)
+                if (needsAction) {
+                    Box(
+                        Modifier.align(Alignment.TopEnd).size(12.dp)
+                            .background(Tones.Warning.content, CircleShape)
+                            .semantics { contentDescription = pendingLabel },
+                    )
+                }
+            }
+            Text(
+                stringResource(section.title),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

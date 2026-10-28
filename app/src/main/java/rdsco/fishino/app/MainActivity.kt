@@ -6,11 +6,10 @@ import android.os.Bundle
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -69,7 +68,7 @@ class MainActivity : FragmentActivity() {
         takeOpenRequest(intent)
 
         setContent {
-            val themeMode by container.themePrefs.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.System)
+            val themeMode by container.themePrefs.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.Light)
             val systemDark = isSystemInDarkTheme()
             val dark = when (themeMode) {
                 ThemeMode.System -> systemDark
@@ -108,7 +107,8 @@ class MainActivity : FragmentActivity() {
                 val employerFlow = remember { container.employerStore.employer.map<Employer?, EmployerState> { EmployerState.Ready(it) } }
                 val state by employerFlow.collectAsStateWithLifecycle(initialValue = EmployerState.Loading)
 
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                // A Surface, not a plain background: text on screens without their own takes the theme's color.
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when (val current = if (privacyAccepted == true) state else EmployerState.Loading) {
                         EmployerState.Loading -> if (privacyAccepted == false) {
                             // Before anything is sent: what the app receives and why (Bazaar's privacy rule).

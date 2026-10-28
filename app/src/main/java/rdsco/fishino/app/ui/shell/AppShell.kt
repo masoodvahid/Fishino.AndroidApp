@@ -241,15 +241,14 @@ fun AppShell(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Avatar(user.fullName, avatarVersion, Modifier.size(52.dp))
-                            Column(Modifier.padding(start = 12.dp)) {
+                            Column(Modifier.padding(start = 12.dp).weight(1f)) {
                                 Text(user.fullName.ifBlank { user.username }, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Text(employer.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            InboxButton(unread) { openRoot(Screen.Inbox) }
                         }
 
-                        InboxBox(unread) { openRoot(Screen.Inbox) }
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, modifier = Modifier.padding(top = 12.dp))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Spacer(Modifier.height(8.dp))
 
                         val root = stack.lastOrNull { it.isRoot } ?: Screen.Home
@@ -328,23 +327,20 @@ fun AppShell(
                             unread = unread,
                             onInbox = { openRoot(Screen.Inbox) },
                             onMenu = { scope.launch { if (drawer.isOpen) drawer.close() else drawer.open() } },
-                            onLogout = { confirmLogout = true },
                         )
                     } else {
                         TopAppBar(
                         title = { Text(title(current), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        // Every screen but home goes back: inner screens to the one before, menu screens to home.
                         navigationIcon = {
-                            if (!current.isRoot) {
+                            if (stack.size > 1) {
                                 IconButton(onClick = ::back) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.list_back))
                                 }
                             }
                         },
-                        // As on the home screen: sign-out, messages, then the menu at the left edge.
+                        // As on the home screen: messages, then the menu at the left edge.
                         actions = {
-                            IconButton(onClick = { confirmLogout = true }) {
-                                Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
-                            }
                             IconButton(onClick = { openRoot(Screen.Inbox) }) {
                                 BadgedBox(badge = { if (unread > 0) Badge() }) {
                                     Icon(Icons.Filled.Email, contentDescription = stringResource(R.string.inbox_title))
@@ -412,7 +408,6 @@ private fun ScreenContent(
                 openRequest = { open(Screen.RequestDetail(it)) },
                 newRequest = { open(Screen.Forms) },
                 openForm = { open(Screen.FormFill(it)) },
-                openNews = { openRoot(Screen.News) },
                 openNewsItem = { open(Screen.NewsDetail(it)) },
                 openProfileSection = openSection,
             ),

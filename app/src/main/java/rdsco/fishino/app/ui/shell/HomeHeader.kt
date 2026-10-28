@@ -37,7 +37,7 @@ import rdsco.fishino.app.ui.theme.LocalDarkTheme
 
 /**
  * RTL places the employer's logo and name on the right; on the left, from
- * the edge inward: the menu, the messages and, last, sign-out.
+ * the edge inward: the menu and the messages. Sign-out is in the menu.
  */
 @Composable
 fun HomeHeader(
@@ -47,20 +47,20 @@ fun HomeHeader(
     unread: Int,
     onInbox: () -> Unit,
     onMenu: () -> Unit,
-    onLogout: () -> Unit,
 ) {
-    BoxWithConstraints(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
+    // Little below: the news slideshow follows closely.
+    BoxWithConstraints(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)) {
         if (maxWidth < 330.dp || LocalDensity.current.fontScale > 1.2f) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Brand(name, employerName, employerLogo)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    HeaderActions(unread, onInbox, onMenu, onLogout)
+                    HeaderActions(unread, onInbox, onMenu)
                 }
             }
         } else {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.weight(1f)) { Brand(name, employerName, employerLogo) }
-                HeaderActions(unread, onInbox, onMenu, onLogout)
+                HeaderActions(unread, onInbox, onMenu)
             }
         }
     }
@@ -89,18 +89,13 @@ private fun Brand(name: String, employerName: String, employerLogo: ImageBitmap?
     }
 }
 
-/** Sign-out first in code: in right-to-left it ends up innermost, the menu at the edge. */
+/** Messages first in code: in right-to-left the menu ends up at the edge. */
 @Composable
-fun HeaderActions(unread: Int, onInbox: () -> Unit, onMenu: () -> Unit, onLogout: () -> Unit) {
+fun HeaderActions(unread: Int, onInbox: () -> Unit, onMenu: () -> Unit) {
     val dark = LocalDarkTheme.current
     val rim = BorderStroke(1.dp, if (dark) Color.White.copy(alpha = .12f) else Color.White.copy(alpha = .8f))
 
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(shape = CircleShape, color = if (dark) Color(0xFF3A1D1B) else Color(0xFFFFF1F1), border = rim) {
-            IconButton(onClick = onLogout, modifier = Modifier.size(48.dp)) {
-                Icon(painterResource(R.drawable.ic_power), contentDescription = stringResource(R.string.home_logout), tint = SignOutRed)
-            }
-        }
         Surface(shape = CircleShape, color = if (dark) Color(0xFF1C2A3A) else Color(0xFFEAF4FF), border = rim) {
             IconButton(onClick = onInbox, modifier = Modifier.size(48.dp)) {
                 Box {

@@ -14,14 +14,14 @@ import java.io.IOException
 
 private val Context.displayDataStore: DataStore<Preferences> by preferencesDataStore(name = "display")
 
-/** Light, dark or as the phone: kept on this phone for every account. */
+/** Light, dark or as the phone: kept on this phone for every account; light until the user chooses. */
 class ThemePrefs(context: Context) {
 
     private val dataStore = context.applicationContext.displayDataStore
 
     val mode: Flow<ThemeMode> = dataStore.data
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
-        .map { preferences -> ThemeMode.entries.firstOrNull { it.name == preferences[MODE] } ?: ThemeMode.System }
+        .map { preferences -> ThemeMode.entries.firstOrNull { it.name == preferences[MODE] } ?: ThemeMode.Light }
 
     suspend fun set(mode: ThemeMode) {
         dataStore.edit { it[MODE] = mode.name }

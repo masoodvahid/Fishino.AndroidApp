@@ -155,7 +155,8 @@ class LoginViewModel(
             when (val result = api.config()) {
                 is ApiResult.Ok -> {
                     val config = result.value
-                    val method = remembered.method?.takeIf { it == LoginMethod.Password || config.otpEnabled } ?: config.defaultMethod
+                    // Username and password first; the SMS code is one tap away (or the only way, if the employer turned passwords off).
+                    val method = if (config.passwordEnabled || !config.otpEnabled) LoginMethod.Password else LoginMethod.Otp
                     _state.update {
                         it.copy(
                             loadingConfig = false,

@@ -114,7 +114,7 @@ private val FishinoTypography = Typography().run {
  * Persian, so layout is right-to-left regardless of the phone's language.
  */
 @Composable
-fun FishinoTheme(mode: ThemeMode = ThemeMode.System, content: @Composable () -> Unit) {
+fun FishinoTheme(mode: ThemeMode = ThemeMode.Light, content: @Composable () -> Unit) {
     val dark = when (mode) {
         ThemeMode.System -> isSystemInDarkTheme()
         ThemeMode.Light -> false
